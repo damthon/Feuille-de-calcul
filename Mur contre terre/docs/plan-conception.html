@@ -171,7 +171,7 @@ hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
     <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
     <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
     <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
-    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 1.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 2.</span></div></div>
     <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
     <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
   </div>
@@ -482,7 +482,7 @@ class Projet:
   <div class="eq"><div class="f">K0 = (1 − sin φ′k)·(1 + sin β) / cos β        <span class="cm">(β = 0 → Jaky classique)</span></div><div class="ref">§4.3.2.4, éq. (5)</div></div>
 
   <h4>Cohésion — §4.3.2.2</h4>
-  <p>Pour c′k &gt; 0, l'implémentation retient c′k = 0 jusqu'à la profondeur critique z꜀ où la poussée théorique s'annulerait, avec un plancher e_ah,k ≥ 5 kN/m² en deçà — combinaison des deux tolérances offertes par la norme. À recaler au lot 2 si vous disposez du tableau 2 (distribution simplifiée).</p>
+  <p>Pour c′k &gt; 0, l'implémentation retient e_ah,k = max(Kah·σ′v − 2·c′k·√Kah ; 5 kN/m²) : la formule complète s'applique partout, mais jamais en dessous du plancher normatif — ce qui revient à admettre c′k = 0 (et la valeur minimale) dans la zone proche de la surface où le calcul théorique deviendrait négatif, sans avoir à résoudre la profondeur critique séparément. Implémenté et testé au lot 2 (<code>geotechnique/poussee.py</code>).</p>
 
   <h4>Direction et signe de δk — Figure 1</h4>
   <div class="tw">
@@ -502,7 +502,7 @@ class Projet:
   <p>Catégorisée G ou Q au choix de l'utilisateur <em>(décision validée, §13)</em>, comme le type de poussée. Un facteur de réduction pour perte de charge (écoulement autour du pied) s'applique à l'intensité, sans changer l'allure triangulaire.</p>
 
   <h4>Pression de compactage</h4>
-  <p>Profil enveloppe classique (Broms/OCDI) : croissance linéaire depuis la surface jusqu'à une profondeur critique z꜀ où elle atteint son maximum, puis valeur constante jusqu'à l'intersection avec la poussée active/K0 normale, qui gouverne au-delà.</p>
+  <p>Modèle simplifié conforme aux deux seuls paramètres demandés (intensité, profondeur d'application) : plateau constant sur les x premiers mètres, nul au-delà. Un profil enveloppe plus détaillé (Broms/OCDI, croissance puis plateau) pourra le remplacer si vous fournissez la clause SIA 267 correspondante — implémenté ainsi au lot 2, à confirmer au lot 12.</p>
   </div>
 </section>
 
@@ -557,12 +557,12 @@ class Projet:
     <div class="figbox">
       <svg viewBox="0 0 150 170">
         <line x1="30" y1="10" x2="30" y2="150" class="ax"/>
-        <polygon points="30,10 65,55 65,150 30,150" class="p-line2"/>
-        <line x1="20" y1="55" x2="40" y2="55" class="ax" stroke-dasharray="2 2"/>
-        <text x="10" y="52" class="lbl">z꜀</text>
+        <polygon points="30,10 65,10 65,90 30,90" class="p-line2"/>
+        <line x1="20" y1="90" x2="40" y2="90" class="ax" stroke-dasharray="2 2"/>
+        <text x="8" y="93" class="lbl">x m</text>
         <text x="60" y="168" class="lbl-b" text-anchor="middle">compactage</text>
       </svg>
-      <figcaption>Croît jusqu'à z꜀, puis constante (enveloppe).</figcaption>
+      <figcaption>Plateau constant sur les x premiers mètres, nul au-delà.</figcaption>
     </div>
   </div>
   <p>Chaque diagramme élémentaire est converti en charges nodales équivalentes sur le maillage (§6) avant assemblage ; les diagrammes affichés en résultat (§7 de votre prompt) sont les enveloppes des combinaisons, pas les diagrammes élémentaires ci-dessus.</p>
@@ -621,8 +621,8 @@ class Projet:
   <table>
     <thead><tr><th class="num">Lot</th><th>Contenu</th></tr></thead>
     <tbody>
-      <tr><td class="num">1</td><td>Structures de données (§4), sérialisation projet, unités</td></tr>
-      <tr><td class="num">2</td><td>Poussée des terres (Coulomb), hydrostatique, compactage — <code>geotechnique/</code></td></tr>
+      <tr><td class="num">1</td><td>Structures de données (§4), sérialisation projet, unités — <strong>fait</strong></td></tr>
+      <tr><td class="num">2</td><td>Poussée des terres (Coulomb), hydrostatique, compactage — <code>geotechnique/</code> — <strong>fait</strong></td></tr>
       <tr><td class="num">3</td><td>Maillage, rigidité élémentaire, appuis, solveur linéaire — <code>mecanique/</code></td></tr>
       <tr><td class="num">4</td><td>Combinaisons SIA 260, charges nodales équivalentes, enveloppes</td></tr>
       <tr><td class="num">5</td><td>Lois de matériaux avancées, flexion composée, effort tranchant — <code>section_ba/</code></td></tr>

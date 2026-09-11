@@ -25,7 +25,7 @@ d'origine.
 | Lot | Contenu | État |
 |:---:|---|:---:|
 | 1 | Structures de données, unités, sérialisation JSON du projet | fait |
-| 2 | Poussée des terres (Coulomb), hydrostatique, compactage | à venir |
+| 2 | Poussée des terres (Coulomb), hydrostatique, compactage | fait |
 | 3 | Maillage, rigidité élémentaire, appuis, solveur linéaire | à venir |
 | 4 | Combinaisons SIA 260, charges nodales équivalentes | à venir |
 | 5 | Lois de matériaux avancées, flexion composée, effort tranchant | à venir |
@@ -104,13 +104,29 @@ kN, kNm, MPa, kN/m², kN/m³ et degrés.
   couronnement.
 - La rigidité en rotation de l'encastrement élastique au pied est
   kθ = ks·B³/12 (Winkler), B étant la largeur totale de la semelle.
-- Coefficients de poussée des terres Kah/Kph par la méthode de Coulomb ;
-  formulation complète (cohésion, K0 pour terrain incliné) au lot 2, voir
-  [`docs/plan-conception.html`](docs/plan-conception.html) §7.
+- Coefficient de poussée active Kah (Coulomb) et au repos K0 (Jaky,
+  terrain incliné), avec cohésion et plancher e_ah,k ≥ 5 kN/m² selon
+  SIA 261 §4.3.2 — voir [`docs/plan-conception.html`](docs/plan-conception.html) §7.
+- Pression hydrostatique triangulaire depuis le niveau de nappe, réduite
+  par un facteur d'écoulement ; pression de compactage en plateau constant
+  sur les x premiers mètres (modèle simplifié, à affiner au lot 12).
+- Rigidité en rotation kθ = ks·B³/12 (Winkler) et contrôle de compression
+  intégrale de la semelle (e ≤ B/6), prêts pour le lot 3.
 - Aucun calcul de stabilité d'ensemble (renversement, glissement).
+
+## Utilisation — poussée des terres (lot 2)
+
+```python
+from mur_contre_terre.geotechnique import profil_poussee, pression_hydrostatique
+from mur_contre_terre.donnees import Sol, TypePoussee
+from mur_contre_terre.unites import deg, kN_m3
+
+sol = Sol(gamma=kN_m3(18), phi=deg(30), type_poussee=TypePoussee.ACTIF)
+e_ah, e_av = profil_poussee(sol, hauteur=3.0, profondeur=3.0)  # Pa, au pied du mur
+```
 
 ## Avertissement
 
-Ce dépôt est en développement (lot 1 sur 12). Aucun calcul de poussée des
-terres, de résistance de section ou de résultat n'est encore implémenté.
-Ne pas utiliser en l'état pour une justification de projet.
+Ce dépôt est en développement (lot 2 sur 12). Le maillage aux éléments
+finis, la vérification de section et les résultats ne sont pas encore
+implémentés. Ne pas utiliser en l'état pour une justification de projet.
