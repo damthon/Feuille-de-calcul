@@ -27,9 +27,10 @@ class Beton:
     fctm: float
     Ecm: float
     epsilon_cu: float = 0.0035
+    poids_volumique: float = 25.0e3  # N/m³ — béton armé courant, SIA 261 annexe C
 
     def __post_init__(self) -> None:
-        for nom in ("fck", "fctm", "Ecm", "epsilon_cu"):
+        for nom in ("fck", "fctm", "Ecm", "epsilon_cu", "poids_volumique"):
             valeur = getattr(self, nom)
             if valeur <= 0:
                 raise ValueError(f"Beton.{nom} doit être strictement positif (reçu {valeur})")

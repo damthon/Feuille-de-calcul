@@ -27,7 +27,7 @@ d'origine.
 | 1 | Structures de données, unités, sérialisation JSON du projet | fait |
 | 2 | Poussée des terres (Coulomb), hydrostatique, compactage | fait |
 | 3 | Maillage, rigidité élémentaire, appuis, solveur linéaire | fait |
-| 4 | Combinaisons SIA 260, charges nodales équivalentes | à venir |
+| 4 | Combinaisons SIA 260, charges nodales équivalentes | fait |
 | 5 | Lois de matériaux avancées, flexion composée, effort tranchant | à venir |
 | 6 | Moment-courbure, EI sécant, encastrement élastique kθ | à venir |
 | 7 | Solveur incrémental non linéaire | à venir |
@@ -146,13 +146,40 @@ resultat.deplacements       # (nb_noeuds, 3) : w, u, θ
 resultat.moment_flechissant  # (nb_elements, 2) : M(début), M(fin)
 ```
 
-Les charges nodales équivalentes à partir des diagrammes de pression
-(`geotechnique`) et des combinaisons SIA 260 arrivent au lot 4 — pour
-l'instant le solveur prend un vecteur de charges nodales déjà construit.
+## Utilisation — charges nodales et combinaisons (lot 4)
+
+```python
+from mur_contre_terre.mecanique import (
+    generer_combinaisons_elu, rigidites_par_element, resoudre, vecteur_charge, vecteur_combine,
+)
+
+maillage = generer_maillage(projet.geometrie, projet.finesse_maillage)
+ea, ei = rigidites_par_element(projet.geometrie, projet.materiaux, maillage)
+
+vecteurs = {
+    c.nom: vecteur_charge(c, projet.sol, projet.geometrie, projet.materiaux, maillage)
+    for c in projet.charges
+}
+
+for combinaison in generer_combinaisons_elu(projet.charges):
+    F = vecteur_combine(combinaison, vecteurs)
+    resultat = resoudre(maillage, ea, ei, projet.appuis, projet.sol, projet.geometrie, F)
+```
+
+Convention de signe (voir l'en-tête de
+[`mecanique/charges_nodales.py`](src/mur_contre_terre/mecanique/charges_nodales.py)) :
+`+u` pointe du côté terre vers l'intérieur (sens de poussée du mur),
+`+w` pointe vers le haut. `SURCHARGE_TETE` et `POUSSEE_TERRES` restent deux
+actions distinctes malgré la formule commune (§4.3.2.3), pour que chacune
+garde son propre facteur de combinaison.
+
+La charge surfacique et la charge linéaire sur le terre-plein utilisent une
+formule élastique (Boussinesq, paroi rigide) faute de clause SIA fournie —
+comme la pression de compactage, à confirmer au lot 12.
 
 ## Avertissement
 
-Ce dépôt est en développement (lot 3 sur 12). Les charges nodales
-équivalentes (poussée des terres → vecteur F), les combinaisons SIA 260,
-la vérification de section et les résultats ne sont pas encore
-implémentés. Ne pas utiliser en l'état pour une justification de projet.
+Ce dépôt est en développement (lot 4 sur 12). La vérification de section
+(flexion composée, effort tranchant, armature) et les résultats affichables
+ne sont pas encore implémentés. Ne pas utiliser en l'état pour une
+justification de projet.
