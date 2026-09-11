@@ -1,0 +1,669 @@
+<title>Mur contre-terre</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#F6F4EF;
+  --surface:#FFFFFF;
+  --surface-2:#ECE8DF;
+  --ink:#1C1B18;
+  --muted:#6B655C;
+  --rule:#D9D3C6;
+  --rule-soft:#E8E3D9;
+  --accent:#1F4E63;
+  --accent-soft:rgba(31,78,99,.10);
+  --terre:#9C5A2E;
+  --terre-soft:rgba(156,90,46,.11);
+  --warn:#A8391A;
+  --warn-soft:rgba(168,57,26,.09);
+  --serif:"Source Serif 4",Charter,Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono","SF Mono",SFMono-Regular,Consolas,"DejaVu Sans Mono",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#14161A; --surface:#1B1E23; --surface-2:#20242A;
+    --ink:#E7E4DC; --muted:#9A968C; --rule:#2E323A; --rule-soft:#262A31;
+    --accent:#74BBD0; --accent-soft:rgba(116,187,208,.14);
+    --terre:#D08A54; --terre-soft:rgba(208,138,84,.14);
+    --warn:#E07A52; --warn-soft:rgba(224,122,82,.13);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#14161A; --surface:#1B1E23; --surface-2:#20242A;
+  --ink:#E7E4DC; --muted:#9A968C; --rule:#2E323A; --rule-soft:#262A31;
+  --accent:#74BBD0; --accent-soft:rgba(116,187,208,.14);
+  --terre:#D08A54; --terre-soft:rgba(208,138,84,.14);
+  --warn:#E07A52; --warn-soft:rgba(224,122,82,.13);
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.62;margin:0;padding:0 1.5rem 6rem;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1010px;margin:0 auto}
+.masthead{padding:3.4rem 0 2rem;border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 1.1rem}
+h1{font-weight:600;font-size:clamp(2rem,5vw,2.8rem);line-height:1.12;letter-spacing:-.015em;text-wrap:balance;margin:0 0 .8rem}
+.standfirst{font-size:1.1rem;color:var(--muted);max-width:64ch;margin:0 0 2rem}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem 1.6rem;border-top:1px solid var(--rule);padding-top:1.1rem}
+.meta dt{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 .25rem}
+.meta dd{margin:0;font-family:var(--mono);font-size:.82rem}
+section{border-top:1px solid var(--rule);padding:2.6rem 0 .4rem}
+section:first-of-type{border-top:none}
+.sechead{display:grid;grid-template-columns:3.2rem minmax(0,1fr);gap:0 1.2rem;align-items:baseline;margin-bottom:1.4rem}
+.secnum{font-family:var(--mono);font-size:.82rem;color:var(--accent);letter-spacing:.04em;padding-top:.35rem}
+h2{font-weight:600;font-size:1.5rem;line-height:1.25;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h3{font-weight:600;font-size:1.06rem;margin:2rem 0 .7rem;letter-spacing:-.005em}
+h4{font-family:var(--mono);font-weight:500;font-size:.74rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:1.6rem 0 .6rem}
+.body{max-width:76ch}
+p{margin:0 0 1rem}
+ul,ol{margin:0 0 1.1rem;padding-left:1.3rem}
+li{margin-bottom:.4rem}
+li::marker{color:var(--muted)}
+strong{font-weight:600}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+.c{font-family:var(--mono);font-size:.76em;background:var(--accent-soft);color:var(--accent);padding:.12em .38em;border-radius:2px;white-space:nowrap}
+.t{font-family:var(--mono);font-size:.76em;background:var(--terre-soft);color:var(--terre);padding:.12em .38em;border-radius:2px;white-space:nowrap}
+.eq{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);margin:1.1rem 0 1.3rem;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 1.2rem}
+.eq .f{font-family:var(--mono);font-size:.86rem;line-height:1.75;padding:.9rem 0 .9rem 1rem;overflow-x:auto;white-space:pre}
+.eq .ref{font-family:var(--mono);font-size:.68rem;letter-spacing:.05em;color:var(--muted);white-space:nowrap;padding:0 1rem 0 0;text-align:right}
+.where{font-size:.9rem;color:var(--muted);margin:-.6rem 0 1.3rem}
+.where code{font-family:var(--mono);font-size:.9em;color:var(--ink)}
+.note{border-left:3px solid var(--warn);background:var(--warn-soft);padding:.9rem 1.1rem;margin:1.3rem 0;font-size:.95rem}
+.note p:last-child{margin-bottom:0}
+.note .tag{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--warn);display:block;margin-bottom:.35rem}
+.decided{border-left:3px solid var(--terre);background:var(--terre-soft);padding:.9rem 1.1rem;margin:1.3rem 0;font-size:.95rem}
+.decided .tag{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--terre);display:block;margin-bottom:.35rem}
+.tw{overflow-x:auto;margin:1.2rem 0 1.5rem;border:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-size:.85rem;background:var(--surface)}
+th,td{padding:.5rem .7rem;text-align:left;border-bottom:1px solid var(--rule-soft);font-variant-numeric:tabular-nums}
+thead th{font-family:var(--mono);font-weight:500;font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);background:var(--surface-2);white-space:nowrap}
+td.num,th.num{text-align:right;font-family:var(--mono);font-size:.82rem}
+tbody tr:last-child td{border-bottom:none}
+caption{caption-side:bottom;text-align:left;font-size:.8rem;color:var(--muted);padding:.6rem .7rem;background:var(--surface-2);border-top:1px solid var(--rule)}
+pre{background:var(--surface);border:1px solid var(--rule);padding:1rem 1.1rem;overflow-x:auto;font-family:var(--mono);font-size:.79rem;line-height:1.62;margin:1.1rem 0 1.4rem}
+code{font-family:var(--mono);font-size:.88em}
+p code,li code,td code{background:var(--surface-2);padding:.1em .3em;border-radius:2px}
+.cm{color:var(--muted)}
+figure{margin:1.6rem 0 1.8rem}
+.figrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin:1.6rem 0 1.8rem}
+.figbox{overflow-x:auto;border:1px solid var(--rule);background:var(--surface);padding:.8rem .6rem .5rem}
+.figbox svg{display:block;min-width:260px;width:100%;height:auto}
+figcaption{font-size:.8rem;color:var(--muted);margin-top:.6rem;max-width:74ch}
+.ax{stroke:var(--ink);stroke-width:1.1;fill:none}
+.grid{stroke:var(--rule);stroke-width:.6;fill:none}
+.tick{stroke:var(--ink);stroke-width:.9}
+.lbl{font-family:var(--mono);font-size:9.5px;fill:var(--muted)}
+.lbl-b{font-family:var(--mono);font-size:10px;fill:var(--ink)}
+.soil{fill:var(--terre-soft);stroke:var(--terre);stroke-width:1}
+.hatch{stroke:var(--terre);stroke-width:.7;opacity:.55}
+.concrete{fill:var(--surface-2);stroke:var(--ink);stroke-width:1.2}
+.water{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1;stroke-dasharray:3 2}
+.p-line{stroke:var(--accent);stroke-width:1.6;fill:var(--accent-soft)}
+.p-line2{stroke:var(--terre);stroke-width:1.6;fill:var(--terre-soft)}
+.spring{stroke:var(--accent);stroke-width:1.4;fill:none}
+.dim{stroke:var(--muted);stroke-width:.7}
+.toc{margin:2.4rem 0 0;padding:1.4rem 0 0}
+.toc ol{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.15rem 2rem}
+.toc li{margin:0;display:flex;gap:.8rem;align-items:baseline;font-size:.9rem}
+.toc .n{font-family:var(--mono);font-size:.72rem;color:var(--muted);min-width:1.5rem}
+.toc a{text-decoration:none;border-bottom:1px solid transparent;padding-bottom:1px}
+.toc a:hover{border-bottom-color:var(--accent)}
+.lead-in{font-size:.95rem;color:var(--muted);border-left:2px solid var(--rule);padding-left:1rem;margin:0 0 1.4rem;max-width:70ch}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.35rem 1.2rem;font-size:.92rem;margin:0 0 1.3rem}
+.kv dt{font-family:var(--mono);font-size:.82rem;color:var(--accent);white-space:nowrap}
+.kv dd{margin:0}
+.steps{display:grid;gap:.6rem;margin:0 0 1.4rem}
+.step{display:grid;grid-template-columns:1.9rem minmax(0,1fr);gap:.9rem;align-items:start;padding:.6rem .8rem;border:1px solid var(--rule);background:var(--surface)}
+.step.now{border-color:var(--accent);background:var(--accent-soft)}
+.step .sn{font-family:var(--mono);font-size:.78rem;color:var(--muted);padding-top:.1rem}
+.step.now .sn{color:var(--accent)}
+.step b{display:block;font-size:.92rem}
+.step span{font-size:.84rem;color:var(--muted)}
+hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
+.colophon{font-size:.9rem;color:var(--muted);max-width:74ch}
+@media (max-width:700px){
+  body{font-size:16px;padding:0 1.1rem 4rem}
+  .sechead{grid-template-columns:1fr;gap:.2rem}
+  .secnum{padding-top:0}
+  .eq{grid-template-columns:minmax(0,1fr)}
+  .eq .ref{text-align:right;padding:0 1rem .7rem}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Plan de conception · étapes 2 &amp; 3 · validées</p>
+  <h1>Mur de sous-sol contre-terre</h1>
+  <p class="standfirst">Vérification et dimensionnement d'un mur de sous-sol en béton armé, fondé sur une semelle avant — modèle poutre EF sur toute la hauteur, poussée des terres, non-linéarité matérielle M‑N‑EI. Architecture calquée sur <a href="https://github.com/damthon/Nommogramme">Nommogramme</a>.</p>
+  <dl class="meta">
+    <div><dt>Dépôt cible</dt><dd>damthon/Feuille-de-calcul</dd></div>
+    <div><dt>Dossier</dt><dd>Mur contre terre/</dd></div>
+    <div><dt>Langage</dt><dd>Python ≥ 3.11</dd></div>
+    <div><dt>Normes</dt><dd>SIA 260 · 261 · 262 · 267</dd></div>
+  </dl>
+
+  <nav class="toc" aria-label="Sommaire">
+    <ol>
+      <li><span class="n">1</span><a href="#s1">Où en est la méthode</a></li>
+      <li><span class="n">2</span><a href="#s2">Analyse du dépôt de référence</a></li>
+      <li><span class="n">3</span><a href="#s3">Architecture du code</a></li>
+      <li><span class="n">4</span><a href="#s4">Structures de données</a></li>
+      <li><span class="n">5</span><a href="#s5">Flux de calcul</a></li>
+      <li><span class="n">6</span><a href="#s6">Géométrie, maillage, appuis</a></li>
+      <li><span class="n">7</span><a href="#s7">Sol et poussée des terres</a></li>
+      <li><span class="n">8</span><a href="#s8">Charges, combinaisons, allure des diagrammes</a></li>
+      <li><span class="n">9</span><a href="#s9">Section béton armé et non-linéarité M‑N‑EI</a></li>
+      <li><span class="n">10</span><a href="#s10">Interface, export, exécutable</a></li>
+      <li><span class="n">11</span><a href="#s11">Validation et tests</a></li>
+      <li><span class="n">12</span><a href="#s12">Lots de développement</a></li>
+      <li><span class="n">13</span><a href="#s13">Décisions prises et points restant à trancher</a></li>
+    </ol>
+  </nav>
+</header>
+
+<main class="doc">
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sechead"><span class="secnum">1</span><h2>Où en est la méthode</h2></div>
+  <div class="body">
+  <p class="lead-in">Votre prompt impose six étapes, chacune validée avant la suivante, et aucun code avant validation des étapes 2 et 3. Ce document couvre les deux : c'est la pièce que vous devez approuver — ou corriger — avant que j'écrive une seule ligne de <code>src/</code>.</p>
+  <div class="steps">
+    <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
+    <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
+    <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 1.</span></div></div>
+    <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
+    <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
+  </div>
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sechead"><span class="secnum">2</span><h2>Analyse du dépôt de référence</h2></div>
+  <div class="body">
+  <p>Nommogramme (résistance au feu de profilés métalliques, SIA 263 / EN 1993‑1‑2) donne le patron que ce projet reprend : même séparation des couches, même trio d'interfaces, même chaîne d'empaquetage.</p>
+
+  <h4>Ce qui se transpose directement</h4>
+  <ul>
+    <li><strong>Séparation stricte en couches</strong> : données (catalogue/paramètres) → physique/mécanique → vérifications normatives → orchestration → interface. Aucune couche ne remonte vers celle qui l'appelle.</li>
+    <li><strong>Objets immuables</strong> (<code>@dataclass(frozen=True)</code>) pour toute entrée — géométrie, sol, matériaux, cas de charge — un calcul ne modifie jamais ses entrées.</li>
+    <li><strong>Unités SI strictes en interne</strong> (m, N, Pa, rad), conversions kN/m², MPa uniquement aux frontières (saisie, rapport).</li>
+    <li><strong>Traçabilité normative</strong> : chaque grandeur intermédiaire citée dans la note de calcul porte sa clause (<span class="c">SIA 267 §5.2</span> etc.), comme <code>docs/references.md</code> chez Nommogramme.</li>
+    <li><strong>Trois surfaces sans calcul propre</strong> : CLI, interface de bureau Tkinter, éventuellement navigateur — toutes appellent la même bibliothèque, jamais l'inverse.</li>
+    <li><strong>Empaquetage</strong> : <code>PyInstaller</code> piloté par un <code>.spec</code>, compilé sur un runner Windows GitHub Actions au push d'un tag, avec un <code>--autotest</code> qui ouvre la fenêtre et vérifie que les données embarquées et les imports différés (ici : <code>matplotlib</code> Tk, <code>PIL._tkinter_finder</code>) sont bien présents.</li>
+    <li><strong>Tests de non-régression déposables sans coder</strong> : <code>tests/cas_reference.toml</code> chez Nommogramme accueille des cas vérifiés en dehors du code Python ; on reprend l'idée pour vos cas Excel (§11).</li>
+  </ul>
+
+  <h4>Où ce projet diverge nécessairement</h4>
+  <ul>
+    <li><strong>Un vrai calcul aux éléments finis</strong> (poutre sur appuis élastiques/rigides, section variable) remplace la lecture d'abaque — module <code>mecanique/</code> entièrement nouveau, pas de bibliothèque tierce de calcul de structure : matrices de rigidité assemblées à la main, comme le fait Nommogramme pour la thermique (intégration explicite plutôt que boîte noire).</li>
+    <li><strong>Non-linéarité matérielle incrémentale</strong> (M‑N‑EI sécant, chargement par paliers) n'a pas d'équivalent chez Nommogramme — c'est le lot le plus proche, par l'esprit, du solveur thermique pas-à-pas de <code>thermique/solveur.py</code> (mise à jour d'une rigidité à chaque pas jusqu'à convergence).</li>
+    <li><strong>Pas de catalogue figé</strong> : ici tout est paramétrique (géométrie, sol, charges) — pas de fichier de données source équivalent au classeur SZS, donc pas de module <code>chargeur.py</code> ; en échange, un format de <strong>fichier projet</strong> à définir (§4) pour la sauvegarde/chargement demandée en §9 de votre prompt.</li>
+  </ul>
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sechead"><span class="secnum">3</span><h2>Architecture du code</h2></div>
+  <div class="body">
+  <p class="lead-in">Six paquets, dans l'ordre où un calcul les traverse. Chaque module normatif porte sa clause en docstring, comme chez Nommogramme.</p>
+
+<pre>mur_contre_terre/
+├── pyproject.toml
+├── src/mur_contre_terre/
+│   ├── __init__.py
+│   ├── unites.py                    <span class="cm"># SI strict en interne, conversions aux bords</span>
+│   │
+│   ├── donnees/
+│   │   ├── geometrie.py             <span class="cm"># Geometrie(hauteur, ep_base, ep_couronnement, debord, ep_semelle) frozen</span>
+│   │   ├── sol.py                   <span class="cm"># Sol(gamma, gamma_sat, phi, c, delta, beta, ks, nappe) frozen</span>
+│   │   ├── materiaux.py             <span class="cm"># Beton, Acier — classes SIA 262, lois avancées</span>
+│   │   ├── charges.py               <span class="cm"># Charge, CategorieAction {G,Q,A}, coefficients ψ</span>
+│   │   └── projet.py                <span class="cm"># Projet — agrège tout ; (dé)sérialisation JSON, fichier .mct</span>
+│   │
+│   ├── geotechnique/
+│   │   ├── poussee.py               <span class="cm"># Ka, K0, Kp — Coulomb §7 ; validation Δ vs déplacements ELU</span>
+│   │   ├── hydrostatique.py         <span class="cm"># pression de nappe, réduction par écoulement</span>
+│   │   ├── compactage.py            <span class="cm"># pression de compactage, profil enveloppe</span>
+│   │   └── appui_elastique.py       <span class="cm"># kθ = ks·B³/12, contrôle semelle comprimée</span>
+│   │
+│   ├── mecanique/
+│   │   ├── maillage.py              <span class="cm"># Noeud, Element (poutre, EI/EA linéaires), Maillage(geometrie, Le)</span>
+│   │   ├── rigidite.py              <span class="cm"># matrice de rigidité élémentaire (section variable), assemblage</span>
+│   │   ├── appuis.py                <span class="cm"># encastrement parfait / ressort kθ ; tête libre / appui dalle</span>
+│   │   ├── charges_nodales.py       <span class="cm"># conversion des pressions/charges en efforts nodaux équivalents</span>
+│   │   ├── solveur_lineaire.py      <span class="cm"># K·u = F, réactions, N/V/M élastiques</span>
+│   │   └── combinaisons.py          <span class="cm"># génération SIA 260 : ELU type 2, ELS ; dominante + concomitantes</span>
+│   │
+│   ├── section_ba/
+│   │   ├── modele_beton.py          <span class="cm"># parabole-rectangle + traction jusqu'à fissuration</span>
+│   │   ├── modele_acier.py          <span class="cm"># bilinéaire écrouissable, ductilité B500B</span>
+│   │   ├── flexion_composee.py      <span class="cm"># N+M : équilibre de section, armature nécessaire</span>
+│   │   ├── effort_tranchant.py      <span class="cm"># résistance V_Rd — SIA 262</span>
+│   │   └── moment_courbure.py       <span class="cm"># M-χ(N), EI sécant = M/χ, à N donné</span>
+│   │
+│   ├── nonlineaire/
+│   │   └── solveur_incremental.py   <span class="cm"># charge par paliers, mise à jour EI(x), itération à convergence</span>
+│   │
+│   ├── rapport.py                   <span class="cm"># note de calcul traçable (Markdown → PDF), export Excel</span>
+│   ├── trace.py                     <span class="cm"># figures : géométrie, diagrammes N/V/M, M-χ, déformées</span>
+│   │
+│   ├── interface/
+│   │   ├── saisie.py                <span class="cm"># jeu de paramètres partagé, traduction unique vers le calcul</span>
+│   │   ├── bureau.py                <span class="cm"># fenêtre Tkinter (onglets : sol, géométrie, charges, résultats)</span>
+│   │   └── infobulle.py             <span class="cm"># aide au survol pour δ, β, ψ, κ…</span>
+│   │
+│   └── cli.py                       <span class="cm"># argparse — vérifier / section / rapport</span>
+└── tests/
+    ├── test_poussee.py              <span class="cm"># Coulomb vs cas manuels, β=0/δ=0 → Rankine</span>
+    ├── test_mecanique.py            <span class="cm"># cas simples à solution fermée (console, bi-encastrée)</span>
+    ├── test_moment_courbure.py      <span class="cm"># section rectangulaire, comparaison à la main</span>
+    ├── test_nonlineaire.py          <span class="cm"># convergence, cas élastique retrouvé à faible charge</span>
+    └── cas_reference.toml           <span class="cm"># vos cas Excel — non-régression, sans écrire de code</span></pre>
+
+  <h4>Principes repris de Nommogramme</h4>
+  <ul>
+    <li><code>mecanique/</code> et <code>section_ba/</code> ne connaissent ni Tkinter ni argparse — l'interface ne fait que traduire des champs de saisie vers des objets <code>donnees/</code> et afficher un objet résultat.</li>
+    <li>Zéro dépendance obligatoire à l'exécution hors <code>numpy</code> (algèbre linéaire du maillage). <code>matplotlib</code> reste un extra <code>[trace]</code>, comme chez Nommogramme, pour garder l'exécutable léger.</li>
+    <li><code>reportlab</code> ou <code>weasyprint</code> pour l'export PDF, <code>openpyxl</code> pour l'export Excel — extras <code>[export]</code>.</li>
+  </ul>
+  </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sechead"><span class="secnum">4</span><h2>Structures de données principales</h2></div>
+  <div class="body">
+  <p>Cinq dataclasses gelées couvrent toutes les entrées ; un objet <code>Projet</code> les agrège et se sérialise en JSON — c'est le « fichier de données » demandé en §9 de votre prompt (extension <code>.mct</code>).</p>
+
+<pre>@dataclass(frozen=True)
+class Geometrie:
+    hauteur: float          <span class="cm"># m</span>
+    ep_base: float           <span class="cm"># m — épaisseur du mur au pied</span>
+    ep_couronnement: float   <span class="cm"># m — épaisseur en tête</span>
+    debord_semelle: float    <span class="cm"># m — côté intérieur</span>
+    ep_semelle: float        <span class="cm"># m
+</span>    <span class="cm"># B = ep_base + debord_semelle, utilisée par appui_elastique.py</span>
+
+@dataclass(frozen=True)
+class Sol:
+    gamma: float; gamma_sat: float | None
+    phi: float; c: float; delta: float; beta: float
+    type_poussee: TypePoussee        <span class="cm"># ACTIF | AU_REPOS</span>
+    ks: float | None                 <span class="cm"># requis si appui élastique</span>
+
+@dataclass(frozen=True)
+class ConditionsAppui:
+    pied: TypeAppuiPied              <span class="cm"># ENCASTREMENT | RESSORT (kθ auto ou saisi)</span>
+    tete: TypeAppuiTete              <span class="cm"># LIBRE | APPUI_DALLE</span>
+
+@dataclass(frozen=True)
+class CasDeCharge:                    <span class="cm"># une entrée de la §5.3 de votre prompt</span>
+    nom: str
+    categorie: CategorieAction        <span class="cm"># G | Q | A</span>
+    valeur: float
+    psi0: float; psi1: float; psi2: float
+    parametres: dict                  <span class="cm"># excentricité, étendue, profondeur… selon le type</span>
+
+@dataclass(frozen=True)
+class Materiaux:
+    beton: Beton                      <span class="cm"># fck, fctm, Ecm — classe SIA 262</span>
+    acier: Acier                      <span class="cm"># B500B — fsk, Es
+</span>    enrobage_terre: float; enrobage_interieur: float
+
+@dataclass(frozen=True)
+class Projet:
+    geometrie: Geometrie; sol: Sol; appuis: ConditionsAppui
+    charges: tuple[CasDeCharge, ...]; materiaux: Materiaux
+    finesse_maillage: float           <span class="cm"># m, longueur d'élément</span></pre>
+
+  <p>Objets résultats, également immuables, retournés à chaque étage de calcul : <code>ResultatMecanique</code> (N, V, M, déformée par section), <code>ResultatSection</code> (armature requise, verdict, M‑χ), <code>ResultatNonLineaire</code> (courbe charge‑déplacement, palier de divergence). Chacun garde ses grandeurs intermédiaires pour la note de calcul, à l'image de <code>r.mu_0</code>, <code>r.theta_cr</code>… chez Nommogramme.</p>
+  </div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sechead"><span class="secnum">5</span><h2>Flux de calcul</h2></div>
+  <div class="body">
+
+<pre>   Projet (géométrie, sol, appuis, charges, matériaux)
+        │
+        ▼
+   Maillage EF de la paroi (§6) ── Le paramétrable
+        │
+        ▼
+   Pour chaque cas de charge élémentaire :
+     poussée des terres (Coulomb, §7) ─┐
+     hydrostatique, compactage ────────┼──►  charges nodales équivalentes
+     surcharges terre-plein ───────────┘         │
+     poids propre, charge en tête (G+Q) ─────────┘
+        │
+        ▼
+   Combinaisons SIA 260 (ELU type 2, ELS) ── §8
+        │
+        ▼
+   Pour chaque combinaison : K·u = F  (linéaire élastique)
+        │                                    │
+        ▼                                    ▼
+   N(x), V(x), M(x), déformée         enveloppe des combinaisons
+        │
+        ▼
+   Par section : flexion composée N+M, effort tranchant, armature (§9)
+        │
+        ▼
+   Par section : M-χ(N), EI sécant                            <span class="cm">┐</span>
+        │                                                       <span class="cm">│ non-linéaire, §9</span>
+        ▼                                                       <span class="cm">│ chargement incrémental</span>
+   Solveur incrémental : EI(x) mis à jour à chaque palier,     <span class="cm">┤</span>
+   itéré jusqu'à convergence ou divergence                     <span class="cm">┘</span>
+        │
+        ▼
+   Résultats (§10 de votre prompt) + note de calcul + export</pre>
+
+  <p>La combinaison la plus défavorable pour chaque effort (N, V, M) et chaque section est retenue pour le dimensionnement de l'armature ; toutes les combinaisons restent accessibles pour inspection.</p>
+  </div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sechead"><span class="secnum">6</span><h2>Géométrie, maillage, conditions d'appui</h2></div>
+  <div class="body">
+
+  <h4>Géométrie</h4>
+  <div class="figrow">
+    <div class="figbox">
+      <svg viewBox="0 0 260 220">
+        <!-- soil left, semi-infinite -->
+        <rect x="0" y="30" width="90" height="170" class="soil"/>
+        <g class="hatch">
+          <line x1="0" y1="40" x2="20" y2="30"/><line x1="0" y1="60" x2="20" y2="50"/>
+          <line x1="0" y1="80" x2="20" y2="70"/><line x1="0" y1="100" x2="20" y2="90"/>
+          <line x1="0" y1="120" x2="20" y2="110"/><line x1="0" y1="140" x2="20" y2="130"/>
+          <line x1="0" y1="160" x2="20" y2="150"/><line x1="0" y1="180" x2="20" y2="170"/>
+        </g>
+        <!-- wall, tapered -->
+        <polygon points="90,30 120,30 130,200 90,200" class="concrete"/>
+        <!-- footing avant (interior side) -->
+        <polygon points="90,200 170,200 170,215 90,215" class="concrete"/>
+        <!-- interior excavation -->
+        <rect x="130" y="30" width="110" height="170" fill="none"/>
+        <!-- ground line -->
+        <line x1="0" y1="30" x2="260" y2="30" class="ax"/>
+        <!-- dims -->
+        <line x1="45" y1="30" x2="45" y2="200" class="dim"/>
+        <text x="30" y="118" class="lbl" transform="rotate(-90 30 118)">terre-plein</text>
+        <text x="150" y="45" class="lbl">excavation (intérieur)</text>
+        <text x="97" y="25" class="lbl-b">couronnement</text>
+        <text x="55" y="212" class="lbl-b">base</text>
+        <text x="175" y="210" class="lbl-b">semelle avant (débord)</text>
+        <line x1="245" y1="30" x2="245" y2="200" class="dim"/>
+        <text x="250" y="118" class="lbl" transform="rotate(-90 250 118)">hauteur H</text>
+      </svg>
+      <figcaption>Coupe : sol semi-infini à gauche, mur d'épaisseur variable au centre, excavation (sous-sol) à droite. La semelle déborde côté intérieur.</figcaption>
+    </div>
+    <div class="figbox">
+      <svg viewBox="0 0 200 220">
+        <line x1="70" y1="20" x2="70" y2="200" class="ax"/>
+        <g class="grid">
+          <line x1="70" y1="20" x2="130" y2="20"/><line x1="70" y1="56" x2="126" y2="56"/>
+          <line x1="70" y1="92" x2="122" y2="92"/><line x1="70" y1="128" x2="118" y2="128"/>
+          <line x1="70" y1="164" x2="114" y2="164"/><line x1="70" y1="200" x2="110" y2="200"/>
+        </g>
+        <circle cx="70" cy="20" r="2.6" fill="var(--ink)"/><circle cx="70" cy="56" r="2.6" fill="var(--ink)"/>
+        <circle cx="70" cy="92" r="2.6" fill="var(--ink)"/><circle cx="70" cy="128" r="2.6" fill="var(--ink)"/>
+        <circle cx="70" cy="164" r="2.6" fill="var(--ink)"/><circle cx="70" cy="200" r="2.6" fill="var(--ink)"/>
+        <text x="135" y="18" class="lbl-b">n₀</text>
+        <text x="10" y="93" class="lbl">Le (paramétrable)</text>
+        <text x="82" y="99" class="lbl">élément i, EI(x) local</text>
+        <text x="112" y="204" class="lbl-b">n₅ — pied</text>
+      </svg>
+      <figcaption>Maillage poutre : nœuds espacés de Le, section interpolée linéairement (épaisseur) entre chaque nœud.</figcaption>
+    </div>
+  </div>
+
+  <h4>Conditions d'appui</h4>
+  <div class="figrow">
+    <div class="figbox">
+      <svg viewBox="0 0 200 140">
+        <line x1="100" y1="10" x2="100" y2="95" class="ax" stroke-width="3"/>
+        <line x1="70" y1="95" x2="130" y2="95" class="ax" stroke-width="3"/>
+        <g class="hatch"><line x1="72" y1="95" x2="78" y2="110"/><line x1="84" y1="95" x2="90" y2="110"/><line x1="96" y1="95" x2="102" y2="110"/><line x1="108" y1="95" x2="114" y2="110"/><line x1="120" y1="95" x2="126" y2="110"/></g>
+        <text x="100" y="128" class="lbl-b" text-anchor="middle">encastrement parfait</text>
+      </svg>
+      <figcaption>Pied — option par défaut.</figcaption>
+    </div>
+    <div class="figbox">
+      <svg viewBox="0 0 200 140">
+        <line x1="100" y1="10" x2="100" y2="70" class="ax" stroke-width="3"/>
+        <path d="M100,70 q-8,4 0,8 t0,8 t0,8 t0,8 t0,8" class="spring"/>
+        <line x1="70" y1="110" x2="130" y2="110" class="ax" stroke-width="3"/>
+        <g class="hatch"><line x1="72" y1="110" x2="78" y2="125"/><line x1="84" y1="110" x2="90" y2="125"/><line x1="96" y1="110" x2="102" y2="125"/><line x1="108" y1="110" x2="114" y2="125"/><line x1="120" y1="110" x2="126" y2="125"/></g>
+        <text x="100" y="8" class="lbl">kθ</text>
+        <text x="100" y="138" class="lbl-b" text-anchor="middle">encastrement élastique</text>
+      </svg>
+      <figcaption>Pied — ressort en rotation, kθ = ks·B³/12.</figcaption>
+    </div>
+    <div class="figbox">
+      <svg viewBox="0 0 200 140">
+        <line x1="100" y1="40" x2="100" y2="120" class="ax" stroke-width="3"/>
+        <text x="100" y="20" class="lbl-b" text-anchor="middle">tête libre</text>
+      </svg>
+      <figcaption>Tête — sans dalle.</figcaption>
+    </div>
+    <div class="figbox">
+      <svg viewBox="0 0 200 140">
+        <line x1="100" y1="40" x2="100" y2="120" class="ax" stroke-width="3"/>
+        <line x1="130" y1="40" x2="160" y2="40" class="ax" stroke-width="3"/>
+        <g class="hatch"><line x1="132" y1="40" x2="132" y2="34"/><line x1="140" y1="40" x2="140" y2="34"/><line x1="148" y1="40" x2="148" y2="34"/><line x1="156" y1="40" x2="156" y2="34"/></g>
+        <circle cx="100" cy="40" r="4" fill="none" class="ax"/>
+        <text x="100" y="20" class="lbl-b" text-anchor="middle">tête appuyée</text>
+      </svg>
+      <figcaption>Tête — bloquée horizontalement par la dalle, rotation libre.</figcaption>
+    </div>
+  </div>
+  <p>L'option « encastrement élastique » calcule kθ = ks·B³/12 par mètre de mur (Winkler, semelle entièrement comprimée) ; la valeur est affichée, modifiable, et un avertissement s'affiche si l'excentricité de N en fondation sort du noyau central.</p>
+  </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sechead"><span class="secnum">7</span><h2>Sol et poussée des terres</h2></div>
+  <div class="body">
+  <p>Coulomb pour Kah et Kph (annexe B), retenu pour intégrer nativement le frottement mur‑sol δ et le talus incliné β déjà prévus en entrée <em>(décision validée, §13)</em>. Formulation reprise de votre extrait SIA 261 §4.3.2, cohésion et composante verticale comprises.</p>
+
+  <div class="eq"><div class="f">e_ah,k = Kah · (Σ γe,k·Δz + g0,k) − 2·c′k·√Kah</div><div class="ref">SIA 261 §4.3.2.3, éq. (3)</div></div>
+  <div class="eq"><div class="f">e_av,k = e_ah,k · tan(δk)</div><div class="ref">éq. (4)</div></div>
+  <div class="eq"><div class="f">e_ph,k = Kph · (Σ γe,k·Δz + g0,k) + 2·c′k·√Kph</div><div class="ref">§4.3.2.5, éq. (6)</div></div>
+  <div class="eq"><div class="f">e_pv,k = e_ph,k · tan(δk)</div><div class="ref">éq. (7)</div></div>
+  <p class="where">Kah = Ka de Coulomb (α = 90° pour un parement vertical ; δ = 0 et β = 0 redonnent Rankine — test de non-régression). Σγe,k·Δz + g0,k est la contrainte verticale effective σ′v(z), déjà couverte par le profil γ/γ′ de part et d'autre de la nappe (§4) — pas de sol multicouche à ajouter.</p>
+
+  <div class="eq"><div class="f">K0 = (1 − sin φ′k)·(1 + sin β) / cos β        <span class="cm">(β = 0 → Jaky classique)</span></div><div class="ref">§4.3.2.4, éq. (5)</div></div>
+
+  <h4>Cohésion — §4.3.2.2</h4>
+  <p>Pour c′k &gt; 0, l'implémentation retient c′k = 0 jusqu'à la profondeur critique z꜀ où la poussée théorique s'annulerait, avec un plancher e_ah,k ≥ 5 kN/m² en deçà — combinaison des deux tolérances offertes par la norme. À recaler au lot 2 si vous disposez du tableau 2 (distribution simplifiée).</p>
+
+  <h4>Direction et signe de δk — Figure 1</h4>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Cas</th><th>Paroi rugueuse, déplacement relatif suffisant</th><th>Paroi lisse / pas de déplacement relatif</th></tr></thead>
+    <tbody>
+      <tr><td>Poussée active (δk)</td><td class="num">+2·φ′k/3</td><td class="num">0</td></tr>
+      <tr><td>Poussée passive (δk)</td><td class="num">−φ′k/2</td><td class="num">0</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Ces valeurs pré-remplissent δ dans l'interface (mur en béton coulé contre terre ⇒ rugueux par défaut) mais restent modifiables. <strong>L'équilibre de toutes les forces parallèles à la paroi est contrôlé</strong> : e_av,k (et e_pv,k côté passif si mobilisé) s'ajoutent à l'effort normal N(x) transmis au maillage, pas seulement e_ah,k à l'effort tranchant.</p>
+
+  <p>Le choix actif/au repos reste à l'utilisateur, après visualisation des déplacements du mur sous charge ELU — l'interface affiche la déformée <strong>avant</strong> ce choix, pas après.</p>
+
+  <h4>Pression hydrostatique</h4>
+  <p>Catégorisée G ou Q au choix de l'utilisateur <em>(décision validée, §13)</em>, comme le type de poussée. Un facteur de réduction pour perte de charge (écoulement autour du pied) s'applique à l'intensité, sans changer l'allure triangulaire.</p>
+
+  <h4>Pression de compactage</h4>
+  <p>Profil enveloppe classique (Broms/OCDI) : croissance linéaire depuis la surface jusqu'à une profondeur critique z꜀ où elle atteint son maximum, puis valeur constante jusqu'à l'intersection avec la poussée active/K0 normale, qui gouverne au-delà.</p>
+  </div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sechead"><span class="secnum">8</span><h2>Charges, combinaisons, allure des diagrammes</h2></div>
+  <div class="body">
+
+  <h4>Combinaisons SIA 260</h4>
+  <div class="eq"><div class="f">ELU type 2 :  Σ γG,j·Gk,j  +  γQ,1·Qk,1  +  Σ γQ,i·ψ0,i·Qk,i</div><div class="ref">SIA 260 §4.4.3.2</div></div>
+  <div class="eq"><div class="f">ELS (fréquent) :  Σ Gk,j  +  ψ1,1·Qk,1  +  Σ ψ2,i·Qk,i</div><div class="ref">SIA 260 §4.4.3.4</div></div>
+  <p class="where">Génération automatique en faisant tourner chaque action variable en position dominante ; γ et ψ pré-remplis selon SIA 260/261, modifiables par action, et les combinaisons éditables à la main comme demandé.</p>
+
+  <h4>Allure attendue des diagrammes de pression sur le mur</h4>
+  <div class="figrow">
+    <div class="figbox">
+      <svg viewBox="0 0 150 170">
+        <line x1="30" y1="10" x2="30" y2="150" class="ax"/>
+        <polygon points="30,10 30,150 95,150" class="p-line"/>
+        <text x="35" y="20" class="lbl">0</text>
+        <text x="97" y="155" class="lbl-b">Ka·γ·H</text>
+        <text x="60" y="168" class="lbl-b" text-anchor="middle">poussée des terres</text>
+      </svg>
+      <figcaption>Triangulaire, croissante avec la profondeur.</figcaption>
+    </div>
+    <div class="figbox">
+      <svg viewBox="0 0 150 170">
+        <line x1="30" y1="10" x2="30" y2="150" class="ax"/>
+        <polygon points="30,10 55,10 85,150 30,150" class="p-line2"/>
+        <text x="60" y="168" class="lbl-b" text-anchor="middle">surcharge terre-plein</text>
+      </svg>
+      <figcaption>Bande uniforme q·Ka en tête, s'ajoute à la triangulaire (trapèze).</figcaption>
+    </div>
+    <div class="figbox">
+      <svg viewBox="0 0 150 170">
+        <line x1="30" y1="10" x2="30" y2="150" class="ax"/>
+        <path d="M30,10 C 70,45 78,70 60,95 C 46,113 34,130 30,150" class="p-line" fill="none"/>
+        <text x="60" y="168" class="lbl-b" text-anchor="middle">charge linéaire (terre-plein)</text>
+      </svg>
+      <figcaption>Bulbe, pic sous la charge puis décroissance (type Boussinesq).</figcaption>
+    </div>
+    <div class="figbox">
+      <svg viewBox="0 0 150 170">
+        <line x1="30" y1="10" x2="30" y2="150" class="ax"/>
+        <polygon points="30,105 30,150 75,150" class="water"/>
+        <line x1="20" y1="105" x2="40" y2="105" class="ax"/>
+        <text x="20" y="100" class="lbl">niveau nappe</text>
+        <text x="60" y="168" class="lbl-b" text-anchor="middle">hydrostatique</text>
+      </svg>
+      <figcaption>Triangulaire depuis le niveau de nappe, jusqu'au pied.</figcaption>
+    </div>
+    <div class="figbox">
+      <svg viewBox="0 0 150 170">
+        <line x1="30" y1="10" x2="30" y2="150" class="ax"/>
+        <polygon points="30,10 65,55 65,150 30,150" class="p-line2"/>
+        <line x1="20" y1="55" x2="40" y2="55" class="ax" stroke-dasharray="2 2"/>
+        <text x="10" y="52" class="lbl">z꜀</text>
+        <text x="60" y="168" class="lbl-b" text-anchor="middle">compactage</text>
+      </svg>
+      <figcaption>Croît jusqu'à z꜀, puis constante (enveloppe).</figcaption>
+    </div>
+  </div>
+  <p>Chaque diagramme élémentaire est converti en charges nodales équivalentes sur le maillage (§6) avant assemblage ; les diagrammes affichés en résultat (§7 de votre prompt) sont les enveloppes des combinaisons, pas les diagrammes élémentaires ci-dessus.</p>
+  </div>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sechead"><span class="secnum">9</span><h2>Section béton armé et non-linéarité M‑N‑EI</h2></div>
+  <div class="body">
+  <p>Pour chaque section et chaque N donné : équilibre des déformations (Navier‑Bernoulli), lois avancées du béton (parabole‑rectangle + traction jusqu'à fissuration <span class="c">SIA 262 §4.1</span>) et de l'acier (bilinéaire écrouissable, B500B) → moment résistant, courbure χ associée, et rigidité sécante :</p>
+  <div class="eq"><div class="f">EI(x) = M(x) / χ(x)</div><div class="ref">définition sécante</div></div>
+
+  <h4>Chargement incrémental</h4>
+  <ol>
+    <li>Charge appliquée par paliers (1 %, …, 100 %, pas paramétrable).</li>
+    <li>À chaque palier : K assemblée avec l'EI(x) courant de chaque élément → résolution linéaire.</li>
+    <li>Pour chaque section : M(x) obtenu, EI(x) mis à jour via la loi M‑χ(N) → nouvelle K.</li>
+    <li>Itération jusqu'à convergence (écart EI sous tolérance) ou divergence détectée (non-convergence après N itérations) — le dernier palier convergé est noté comme charge maximale atteinte.</li>
+  </ol>
+  <p>Sortie : courbe charge–déplacement (tête ou point maximal) en fonction du % de charge, comme demandé en §8 de votre prompt.</p>
+  </div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sechead"><span class="secnum">10</span><h2>Interface, export, exécutable</h2></div>
+  <div class="body">
+  <ul>
+    <li><strong>Interface</strong> : fenêtre Tkinter à onglets (sol, géométrie, appuis, charges, matériaux, résultats), même charpente que <code>interface/bureau.py</code> de Nommogramme — <code>interface/saisie.py</code> porte l'unique traduction vers les dataclasses de calcul.</li>
+    <li><strong>Sauvegarde/chargement</strong> : sérialisation JSON de <code>Projet</code>, extension <code>.mct</code>.</li>
+    <li><strong>Export</strong> : PDF (note de calcul mise en page, via <code>weasyprint</code> ou <code>reportlab</code>) et Excel (tableaux de résultats par section, via <code>openpyxl</code>) <em>(décision validée, §13)</em>.</li>
+    <li><strong>Exécutable</strong> : <code>PyInstaller</code>, <code>.spec</code> dédié excluant les mêmes lourdeurs inutiles (pandas/pyarrow si Streamlit n'est finalement pas retenu), build Windows via GitHub Actions au push d'un tag, <code>--autotest</code> avant publication.</li>
+  </ul>
+  </div>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sechead"><span class="secnum">11</span><h2>Validation et tests</h2></div>
+  <div class="body">
+  <ul>
+    <li>Tests unitaires par module (poussée, rigidité élémentaire, moment-courbure) contre des solutions fermées connues.</li>
+    <li>Cas simples à solution analytique pour le solveur EF : console encastrée sous charge triangulaire, bi-encastrée — comparaison directe.</li>
+    <li><code>tests/cas_reference.toml</code> : vous y déposez les résultats de vos feuilles Excel (efforts, armature, flèche) sur des cas réels ; chaque entrée devient un test de non-régression automatique, sans écrire de code — c'est l'étape 5 de votre méthode.</li>
+    <li>Un tableau d'écarts (comme le tableau de validation steeltec chez Nommogramme) sera tenu dans <code>docs/validation.md</code> au fur et à mesure.</li>
+  </ul>
+  </div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sechead"><span class="secnum">12</span><h2>Lots de développement</h2></div>
+  <div class="body">
+  <div class="tw">
+  <table>
+    <thead><tr><th class="num">Lot</th><th>Contenu</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>Structures de données (§4), sérialisation projet, unités</td></tr>
+      <tr><td class="num">2</td><td>Poussée des terres (Coulomb), hydrostatique, compactage — <code>geotechnique/</code></td></tr>
+      <tr><td class="num">3</td><td>Maillage, rigidité élémentaire, appuis, solveur linéaire — <code>mecanique/</code></td></tr>
+      <tr><td class="num">4</td><td>Combinaisons SIA 260, charges nodales équivalentes, enveloppes</td></tr>
+      <tr><td class="num">5</td><td>Lois de matériaux avancées, flexion composée, effort tranchant — <code>section_ba/</code></td></tr>
+      <tr><td class="num">6</td><td>Moment-courbure, EI sécant, encastrement élastique kθ</td></tr>
+      <tr><td class="num">7</td><td>Solveur incrémental non linéaire — <code>nonlineaire/</code></td></tr>
+      <tr><td class="num">8</td><td>Note de calcul, figures (trace.py)</td></tr>
+      <tr><td class="num">9</td><td>Interface Tkinter, sauvegarde/chargement de projet</td></tr>
+      <tr><td class="num">10</td><td>Export PDF / Excel</td></tr>
+      <tr><td class="num">11</td><td>Empaquetage exécutable Windows, CI, README</td></tr>
+      <tr><td class="num">12</td><td>Validation contre vos cas Excel (étape 5)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Encastrement parfait au pied développé en premier (option par défaut de votre prompt) ; l'encastrement élastique arrive avec le lot 6, une fois le solveur linéaire éprouvé.</p>
+  </div>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sechead"><span class="secnum">13</span><h2>Décisions prises et points restant à trancher</h2></div>
+  <div class="body">
+
+  <div class="decided"><span class="tag">Validé avec vous</span>
+  <ul>
+    <li><strong>Poussée des terres</strong> : Coulomb (Kah, Kph) avec la formulation exacte de SIA 261 §4.3.2 — cohésion, K0 pour terrain incliné, signe de δ, équilibre vertical (§7, mis à jour d'après vos extraits).</li>
+    <li><strong>Pression hydrostatique</strong> : catégorie G ou Q au choix de l'utilisateur.</li>
+    <li><strong>Export</strong> : PDF et Excel.</li>
+    <li><strong>Dépôt / dossier</strong> : <code>damthon/Feuille-de-calcul</code>, dossier <code>Mur contre terre/</code>.</li>
+    <li><strong>Fichier projet</strong> : JSON, extension <code>.mct</code>.</li>
+    <li><strong>Exécutable</strong> : <code>MurContreTerre.exe</code> (paquet Python <code>mur_contre_terre</code>).</li>
+    <li><strong>Solveur non linéaire</strong> : tolérance et nombre d'itérations pré-remplis à des valeurs raisonnables au lot 7, <strong>modifiables depuis l'interface de bureau</strong> (pas seulement en dur dans le code).</li>
+  </ul>
+  </div>
+
+  <p>Toutes les questions ouvertes sont tranchées. Le lot 1 démarre : structures de données, unités, sérialisation JSON du projet.</p>
+  </div>
+</section>
+
+</main>
+
+<hr class="end">
+<p class="colophon">Plan de conception établi à partir de l'analyse du dépôt <code>damthon/Nommogramme</code> et du prompt fourni pour le mur de sous-sol contre-terre. Aucun code de calcul n'a été écrit à ce stade.</p>
+
+</div>

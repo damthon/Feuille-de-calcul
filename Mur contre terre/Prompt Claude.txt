@@ -1,0 +1,128 @@
+# Application de vérification et dimensionnement d'un mur de sous-sol de bâtiment (mur contre-terre)
+
+## 1. Contexte et objectif
+
+Notre bureau d'ingénieurs en structure utilise des feuilles de calcul Excel pour les cas courants. Nous souhaitons les transformer en applications autonomes distribuées sous forme d'exécutables.
+
+L'objectif est de développer une application qui vérifie et dimensionne un mur de sous-sol de bâtiment en béton armé, fondé sur une semelle avant.
+
+- **Référence d'architecture et de distribution :** https://github.com/damthon/Nommogramme.git (même structure de projet, même type d'interface, même mode de génération de l'exécutable).
+- **Langage :** tout le code est écrit en Python.
+- **Dépôt cible :** `damthon/Feuille-de-calcul` — tous les fichiers y sont déposés, dossier `Mur contre terre/`.
+
+## 2. Méthode de travail (étapes imposées)
+
+Chaque étape doit être validée par moi avant de passer à la suivante. Aucun code n'est écrit avant la validation des étapes 2 et 3.
+
+1. **Analyse du dépôt de référence** (Nommogramme) : structure, bibliothèques utilisées, interface, génération de l'exécutable.
+2. **Plan du code** : architecture, liste des modules et leur rôle, flux de données (entrées → calcul → résultats), structures de données principales, choix des bibliothèques.
+3. **Schémas du modèle** : géométrie, maillage, conditions d'appui, cas de charge, allure des diagrammes de pression attendus.
+4. **Développement** module par module, avec tests unitaires.
+5. **Validation** des résultats par comparaison avec nos feuilles Excel existantes sur des cas de référence.
+6. **Dépôt sur GitHub** et génération de l'exécutable.
+
+## 3. Normes de référence
+
+- SIA 260 : bases, situations de projet, combinaisons d'actions.
+- SIA 261 : actions (catégorisation des charges).
+- SIA 262 : béton armé (résistance en section, effort tranchant, lois de matériaux).
+- SIA 267 : géotechnique (poussée des terres, valeurs de calcul des paramètres du sol).
+
+Les facteurs partiels (γ) et les coefficients de combinaison (ψ₀, ψ₁, ψ₂) sont pré-remplis selon les normes mais restent modifiables par l'utilisateur.
+
+## 4. Modèle mécanique
+
+- **Type d'ouvrage :** mur de sous-sol d'un bâtiment de grandes dimensions, fondé sur une semelle filante avant (semelle débordant côté intérieur du bâtiment). La stabilité d'ensemble (renversement, glissement) est assurée par le bâtiment et n'est pas vérifiée.
+- **Modèle plan** en tranche de 1,00 m de longueur de mur.
+- **Configuration :** sol semi-infini à gauche (côté terre), mur au centre, intérieur du sous-sol à droite (zone excavée).
+- **Mur :** modélisé en éléments finis de type poutre sur toute sa hauteur, section variable (interpolation linéaire de l'épaisseur entre la base et le couronnement).
+- **Maillage :** la longueur des éléments est paramétrable par l'utilisateur (contrôle total sur la finesse du maillage).
+- **Conditions d'appui :**
+  - Pied : liaison avec la semelle avant, deux options au choix de l'utilisateur :
+    - **Encastrement parfait** (option par défaut, à développer en premier).
+    - **Encastrement élastique** : ressort en rotation représentant la rotation de la semelle sur le sol. Sa rigidité kθ [kNm/rad/m] est calculée à partir du module de réaction du sol de fondation ks et de la largeur totale de la semelle B (modèle de Winkler : kθ = ks · B³ / 12 par mètre de mur). La valeur calculée de kθ est affichée et peut être remplacée manuellement par l'utilisateur. Le modèle suppose la semelle entièrement comprimée ; l'application affiche un avertissement si ce n'est pas le cas.
+  - Tête : libre ou appuyée horizontalement par la dalle (choix de l'utilisateur).
+
+## 5. Données d'entrée
+
+### 5.1 Sol
+- Poids volumique (γ au-dessus de la nappe, γ' ou γsat sous la nappe).
+- Angle de frottement interne φ', cohésion c'.
+- Angle de frottement mur-sol δ.
+- Talus : horizontal ou incliné (angle β).
+- Type de poussée : **active** ou **au repos** (K₀). L'utilisateur choisit après avoir visualisé les déplacements du mur sous charge ELU.
+- Méthode de calcul des coefficients de poussée : Coulomb (Ka, K0), avec la formulation SIA 261 §4.3.2 (cohésion, K0 pour terrain incliné, signe de δ selon la Figure 1, équilibre vertical parallèle à la paroi).
+- Module de réaction du sol de fondation ks [kN/m³] (uniquement si l'option encastrement élastique au pied est activée).
+
+### 5.2 Géométrie
+- Hauteur du mur.
+- Épaisseur à la base.
+- Épaisseur au couronnement.
+- Semelle avant : largeur du débord côté intérieur et épaisseur. La largeur totale B (épaisseur du mur à la base + débord) sert au calcul de la rigidité en rotation lorsque l'option encastrement élastique est activée.
+
+### 5.3 Charges (catégorisées selon SIA 261)
+
+Chaque charge est définie avec sa catégorie (permanente G, variable Q, accidentelle A), sa valeur caractéristique et ses coefficients ψ.
+
+| Charge | Catégorie | Paramètres |
+|---|---|---|
+| Poids propre du mur | G | calculé automatiquement |
+| Charge verticale transmise par le bâtiment en tête de mur | G et Q | intensité [kN/m], excentricité |
+| Poussée des terres | G | issue des paramètres du sol |
+| Surcharge de terre en tête de mur | G | hauteur ou intensité |
+| Charge surfacique sur le terre-plein | Q | intensité [kN/m²], étendue |
+| Charge linéaire sur le terre-plein | Q | intensité [kN/m], distance au mur |
+| Pression hydrostatique | G ou Q, au choix de l'utilisateur | niveau de nappe côté terre, facteur de réduction pour écoulement (perte de charge) |
+| Pression de compactage | Q | intensité, profondeur d'application (x premiers mètres) |
+
+### 5.4 Combinaisons de charge
+- Génération automatique des combinaisons selon SIA 260 (ELU type 2, ELS), avec charge dominante et charges concomitantes.
+- Possibilité de définir ou modifier manuellement les combinaisons.
+
+### 5.5 Matériaux
+- **Béton** (classe SIA 262) : fck, fctm, Ecm, loi contrainte-déformation (parabole-rectangle ou équivalent), résistance à la traction pour la fissuration.
+- **Acier d'armature** (B500B) : fsk, Es, loi bilinéaire avec écrouissage, ductilité.
+- Enrobage et disposition des armatures (côté terre et côté intérieur).
+- Le modèle de matériau est un **modèle avancé** permettant la prise en compte de la fissuration du béton et de la plastification des armatures, pour la vérification en section et le calcul des déplacements.
+
+## 6. Vérifications
+
+La vérification porte uniquement sur la résistance structurale du mur (**ELU type 2 — rupture interne**) :
+- Flexion composée (M + N).
+- Effort tranchant.
+- Détermination de la quantité d'armature nécessaire sur toute la hauteur.
+
+La stabilité d'ensemble (ELU type 1) n'est pas traitée (voir section 4).
+
+## 7. Résultats à afficher (sur toute la hauteur du mur)
+
+1. Charges s'appliquant sur l'écran de soutènement.
+2. Contrainte effective dans le sol.
+3. Contrainte totale dans le sol.
+4. Pression hydrostatique.
+5. Effort normal dans la paroi.
+6. Effort tranchant dans la paroi.
+7. Moment de flexion dans la paroi.
+8. Quantité d'armature nécessaire.
+9. Déformée élastique linéaire.
+10. Diagramme moment-courbure (M-χ) et rigidité sécante (M-EI), avec menu déroulant pour choisir la section affichée.
+11. Déformée non linéaire à court terme (sans fluage), voir section 8.
+
+## 8. Calcul non linéaire à court terme (sans fluage)
+
+- Pour chaque section de la paroi, établir la relation moment-courbure en fonction de l'effort normal (interaction M-N-EI), en tenant compte de la fissuration et de la plastification des armatures.
+- La rigidité sécante de chaque section est EI = M / χ.
+- **Chargement incrémental :** la charge est appliquée par étapes (par exemple 1 %, …, 25 %, …, 100 %), les pas étant paramétrables.
+- À chaque pas, pour chaque section : calcul des efforts, mise à jour de la rigidité EI en fonction du moment, itération jusqu'à convergence.
+- **Arrêt :** à 100 % de la charge, ou lorsque le calcul diverge. Dans ce cas, la charge maximale atteinte est notée et affichée.
+- Afficher la courbe charge-déplacement (déplacement en tête ou déplacement maximal en fonction du pourcentage de charge).
+- Tolérance de convergence et nombre maximal d'itérations : valeurs par défaut raisonnables, modifiables depuis l'interface de bureau.
+
+## 9. Interface et livrables
+
+- Interface graphique dans le même esprit que Nommogramme.
+- Unités SI (kN, m, kN/m², MPa), interface en français.
+- Sauvegarde et chargement des projets : fichier JSON, extension `.mct`.
+- Export des résultats : PDF (note de calcul) et Excel (tableaux de résultats).
+- Exécutable Windows autonome : `MurContreTerre.exe`.
+- README décrivant l'installation, l'utilisation et les hypothèses du modèle.

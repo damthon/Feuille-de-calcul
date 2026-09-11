@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mur-contre-terre"
+version = "0.1.0"
+description = "Vérification et dimensionnement d'un mur de sous-sol en béton armé, fondé sur semelle avant (SIA 260 / 261 / 262 / 267)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+dependencies = [
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+trace = ["matplotlib>=3.7"]
+export = ["openpyxl>=3.1", "reportlab>=4.0"]
+bureau = ["matplotlib>=3.7"]
+dev = ["pytest>=7.4", "matplotlib>=3.7", "openpyxl>=3.1", "reportlab>=4.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src"]
+addopts = "--doctest-modules"
