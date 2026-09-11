@@ -171,7 +171,7 @@ hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
     <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
     <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
     <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
-    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 4.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 5.</span></div></div>
     <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
     <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
   </div>
@@ -568,6 +568,12 @@ class Projet:
     </div>
   </div>
   <p>Chaque diagramme élémentaire est converti en charges nodales équivalentes sur le maillage (§6) avant assemblage ; les diagrammes affichés en résultat (§7 de votre prompt) sont les enveloppes des combinaisons, pas les diagrammes élémentaires ci-dessus.</p>
+
+  <h4>Charges du terre-plein (surfacique et linéaire) — implémentées au lot 4</h4>
+  <p>Aucune clause SIA ne vous a été fournie pour ces deux charges (contrairement à la poussée des terres, §4.3.2). Modèle retenu, à confirmer au lot 12 comme pour la pression de compactage : formule élastique classique (Boussinesq, paroi rigide) pour la charge linéaire — σh(z) = (2Q/π)·a²z/(a²+z²)² — et intégration numérique de cette même formule sur la largeur de la bande pour la charge surfacique (superposition de charges linéaires infinitésimales).</p>
+
+  <h4>Convention de signe des charges nodales — <code>mecanique/charges_nodales.py</code></h4>
+  <p><code>+u</code> pointe du côté terre vers le côté intérieur (sens de poussée du mur) : toutes les pressions latérales s'y appliquent en positif. <code>+w</code> pointe vers le haut : le poids propre et la composante verticale de frottement de la poussée (tan δ, §7) s'appliquent en négatif. Les charges réparties (valeurs connues à chaque nœud) sont converties en efforts nodaux par les formules classiques de chargement trapézoïdal, vérifiées par équilibre et par convergence de maillage avant d'écrire le module.</p>
   </div>
 </section>
 
@@ -626,7 +632,7 @@ class Projet:
       <tr><td class="num">1</td><td>Structures de données (§4), sérialisation projet, unités — <strong>fait</strong></td></tr>
       <tr><td class="num">2</td><td>Poussée des terres (Coulomb), hydrostatique, compactage — <code>geotechnique/</code> — <strong>fait</strong></td></tr>
       <tr><td class="num">3</td><td>Maillage, rigidité élémentaire, appuis, solveur linéaire — <code>mecanique/</code> — <strong>fait</strong></td></tr>
-      <tr><td class="num">4</td><td>Combinaisons SIA 260, charges nodales équivalentes, enveloppes</td></tr>
+      <tr><td class="num">4</td><td>Combinaisons SIA 260, charges nodales équivalentes, enveloppes — <strong>fait</strong></td></tr>
       <tr><td class="num">5</td><td>Lois de matériaux avancées, flexion composée, effort tranchant — <code>section_ba/</code></td></tr>
       <tr><td class="num">6</td><td>Moment-courbure, EI sécant, encastrement élastique kθ</td></tr>
       <tr><td class="num">7</td><td>Solveur incrémental non linéaire — <code>nonlineaire/</code></td></tr>

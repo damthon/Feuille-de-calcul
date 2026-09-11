@@ -12,6 +12,7 @@ from mur_contre_terre.geotechnique.poussee import (
     pression_verticale,
     profil_poussee,
 )
+from mur_contre_terre.geotechnique.surcharges import pression_charge_lineaire, pression_charge_surfacique
 
 __all__ = [
     "CoefficientsPoussee",
@@ -22,6 +23,8 @@ __all__ = [
     "k0_jaky",
     "kah_coulomb",
     "pression_active_horizontale",
+    "pression_charge_lineaire",
+    "pression_charge_surfacique",
     "pression_compactage",
     "pression_hydrostatique",
     "pression_verticale",
