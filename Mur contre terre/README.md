@@ -26,7 +26,7 @@ d'origine.
 |:---:|---|:---:|
 | 1 | Structures de données, unités, sérialisation JSON du projet | fait |
 | 2 | Poussée des terres (Coulomb), hydrostatique, compactage | fait |
-| 3 | Maillage, rigidité élémentaire, appuis, solveur linéaire | à venir |
+| 3 | Maillage, rigidité élémentaire, appuis, solveur linéaire | fait |
 | 4 | Combinaisons SIA 260, charges nodales équivalentes | à venir |
 | 5 | Lois de matériaux avancées, flexion composée, effort tranchant | à venir |
 | 6 | Moment-courbure, EI sécant, encastrement élastique kθ | à venir |
@@ -111,7 +111,11 @@ kN, kNm, MPa, kN/m², kN/m³ et degrés.
   par un facteur d'écoulement ; pression de compactage en plateau constant
   sur les x premiers mètres (modèle simplifié, à affiner au lot 12).
 - Rigidité en rotation kθ = ks·B³/12 (Winkler) et contrôle de compression
-  intégrale de la semelle (e ≤ B/6), prêts pour le lot 3.
+  intégrale de la semelle (e ≤ B/6).
+- Éléments poutre d'Euler-Bernoulli verticaux (pas de transformation de
+  repère), section évaluée au milieu de chaque élément ; convention de
+  signe N/V/M calibrée et vérifiée contre des solutions fermées de RDM —
+  voir l'en-tête de [`mecanique/solveur_lineaire.py`](src/mur_contre_terre/mecanique/solveur_lineaire.py).
 - Aucun calcul de stabilité d'ensemble (renversement, glissement).
 
 ## Utilisation — poussée des terres (lot 2)
@@ -125,8 +129,30 @@ sol = Sol(gamma=kN_m3(18), phi=deg(30), type_poussee=TypePoussee.ACTIF)
 e_ah, e_av = profil_poussee(sol, hauteur=3.0, profondeur=3.0)  # Pa, au pied du mur
 ```
 
+## Utilisation — solveur mécanique (lot 3)
+
+```python
+import numpy as np
+from mur_contre_terre.mecanique import generer_maillage, rigidites_par_element, resoudre
+
+maillage = generer_maillage(projet.geometrie, projet.finesse_maillage)
+ea, ei = rigidites_par_element(projet.geometrie, projet.materiaux, maillage)
+
+forces = np.zeros(maillage.nb_dof)
+forces[3 * (maillage.nb_noeuds - 1) + 1] = 10_000.0  # charge horizontale en tête [N]
+
+resultat = resoudre(maillage, ea, ei, projet.appuis, projet.sol, projet.geometrie, forces)
+resultat.deplacements       # (nb_noeuds, 3) : w, u, θ
+resultat.moment_flechissant  # (nb_elements, 2) : M(début), M(fin)
+```
+
+Les charges nodales équivalentes à partir des diagrammes de pression
+(`geotechnique`) et des combinaisons SIA 260 arrivent au lot 4 — pour
+l'instant le solveur prend un vecteur de charges nodales déjà construit.
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 2 sur 12). Le maillage aux éléments
-finis, la vérification de section et les résultats ne sont pas encore
+Ce dépôt est en développement (lot 3 sur 12). Les charges nodales
+équivalentes (poussée des terres → vecteur F), les combinaisons SIA 260,
+la vérification de section et les résultats ne sont pas encore
 implémentés. Ne pas utiliser en l'état pour une justification de projet.

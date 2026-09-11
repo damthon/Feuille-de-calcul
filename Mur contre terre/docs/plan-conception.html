@@ -171,7 +171,7 @@ hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
     <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
     <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
     <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
-    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 2.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 4.</span></div></div>
     <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
     <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
   </div>
@@ -464,6 +464,8 @@ class Projet:
     </div>
   </div>
   <p>L'option « encastrement élastique » calcule kθ = ks·B³/12 par mètre de mur (Winkler, semelle entièrement comprimée) ; la valeur est affichée, modifiable, et un avertissement s'affiche si l'excentricité de N en fondation sort du noyau central.</p>
+
+  <p>Implémenté au lot 3 : éléments poutre 2D sans transformation de repère (le mur est droit et vertical, l'axe local coïncide avec l'axe global), section évaluée au milieu de chaque élément. La convention de signe de N/V/M a été calibrée et vérifiée numériquement contre des solutions fermées de RDM (console sous charge transversale, moment ou effort normal en tête, encastrement élastique) — voir l'en-tête de <code>mecanique/solveur_lineaire.py</code>.</p>
   </div>
 </section>
 
@@ -623,7 +625,7 @@ class Projet:
     <tbody>
       <tr><td class="num">1</td><td>Structures de données (§4), sérialisation projet, unités — <strong>fait</strong></td></tr>
       <tr><td class="num">2</td><td>Poussée des terres (Coulomb), hydrostatique, compactage — <code>geotechnique/</code> — <strong>fait</strong></td></tr>
-      <tr><td class="num">3</td><td>Maillage, rigidité élémentaire, appuis, solveur linéaire — <code>mecanique/</code></td></tr>
+      <tr><td class="num">3</td><td>Maillage, rigidité élémentaire, appuis, solveur linéaire — <code>mecanique/</code> — <strong>fait</strong></td></tr>
       <tr><td class="num">4</td><td>Combinaisons SIA 260, charges nodales équivalentes, enveloppes</td></tr>
       <tr><td class="num">5</td><td>Lois de matériaux avancées, flexion composée, effort tranchant — <code>section_ba/</code></td></tr>
       <tr><td class="num">6</td><td>Moment-courbure, EI sécant, encastrement élastique kθ</td></tr>
