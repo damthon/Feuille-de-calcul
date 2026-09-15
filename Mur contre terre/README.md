@@ -32,7 +32,7 @@ d'origine.
 | 6 | Moment-courbure, EI sécant, encastrement élastique kθ | fait |
 | 7 | Solveur incrémental non linéaire | fait |
 | 8 | Note de calcul, figures | fait |
-| 9 | Interface de bureau, sauvegarde/chargement de projet | à venir |
+| 9 | Interface de bureau, sauvegarde/chargement de projet | fait |
 | 10 | Export PDF / Excel | à venir |
 | 11 | Empaquetage exécutable Windows, CI | à venir |
 | 12 | Validation contre les cas de référence Excel du bureau | à venir |
@@ -294,8 +294,35 @@ géométrie, diagrammes N/V/M, moment-courbure, déformée — chacune
 retournée comme `matplotlib.figure.Figure` à enregistrer ou intégrer
 par l'appelant.
 
+## Utilisation — interface de bureau et ligne de commande (lot 9)
+
+```bash
+mur-contre-terre                                   # lance l'interface de bureau (Tkinter)
+mur-contre-terre verifier projet.mct                # calcule et affiche la note de calcul
+mur-contre-terre verifier projet.mct -o note.md      # … ou l'écrit dans un fichier
+```
+
+`interface/bureau.py` (Tkinter, module de la bibliothèque standard —
+aucune dépendance supplémentaire) ouvre une fenêtre à onglets
+(géométrie, sol, appuis, matériaux, charges, résultats) ;
+`interface/saisie.py` porte la seule traduction entre les champs
+(unités utilisateur : m, °, kN, kN/m², kN/m³, MPa) et les dataclasses de
+calcul — testée sans Tkinter. Sauvegarde/chargement de projet réutilise
+directement `Projet.sauvegarder`/`Projet.charger` (JSON `.mct`, lot 1).
+`cli.py` fournit le point d'entrée (`mur-contre-terre`, voir
+`[project.scripts]`) : sans sous-commande il lance l'interface, sinon
+`verifier` calcule un projet sans fenêtre — c'est aussi la base de
+l'exécutable empaqueté (lot 11, `--autotest`).
+
+Tkinter fait partie de la bibliothèque standard mais n'est pas toujours
+présent dans un environnement de développement minimal (ex. `python3-tk`
+manquant) ; `conftest.py` ignore alors `interface/bureau.py` et
+`interface/infobulle.py` à la collecte des tests plutôt que de faire
+échouer toute la suite — une installation Python standard (Windows,
+macOS) ou l'exécutable empaqueté l'incluent tous deux.
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 8 sur 12). L'interface de bureau
-(lot 9) et l'export PDF/Excel (lot 10) ne sont pas encore implémentés.
-Ne pas utiliser en l'état pour une justification de projet.
+Ce dépôt est en développement (lot 9 sur 12). L'export PDF/Excel
+(lot 10) et l'empaquetage en exécutable (lot 11) ne sont pas encore
+implémentés. Ne pas utiliser en l'état pour une justification de projet.
