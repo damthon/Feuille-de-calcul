@@ -34,7 +34,7 @@ d'origine.
 | 8 | Note de calcul, figures | fait |
 | 9 | Interface de bureau, sauvegarde/chargement de projet | fait |
 | 10 | Export PDF / Excel | fait |
-| 11 | Empaquetage exécutable Windows, CI | à venir |
+| 11 | Empaquetage exécutable Windows, CI | fait |
 | 12 | Validation contre les cas de référence Excel du bureau | à venir |
 
 ## Installation
@@ -343,9 +343,40 @@ Cairo/Pango/GTK) : plus simple à empaqueter de façon fiable avec
 PyInstaller (lot 11). L'interface de bureau propose les trois formats
 (Markdown, PDF, Excel) depuis l'onglet Résultats.
 
+## Exécutable Windows et intégration continue (lot 11)
+
+`mur_contre_terre.spec` (racine du dépôt) empaquette `cli.py` avec
+PyInstaller en un exécutable Windows unique (`MurContreTerre.exe`,
+partagé CLI/GUI — voir `cli.py`). Deux workflows GitHub Actions :
+
+- [`tests.yml`](../.github/workflows/tests.yml) : suite de tests
+  complète (`pytest`, avec `python3-tk` et `xvfb`) à chaque push/PR
+  touchant ce dossier.
+- [`build-release.yml`](../.github/workflows/build-release.yml) :
+  au push d'un tag `mur-contre-terre-v*` (ou déclenchement manuel),
+  construit l'exécutable sur `windows-latest`, le vérifie
+  (`MurContreTerre.exe --autotest` — mêmes imports différés que
+  matplotlib Tk chez Nommogramme), puis publie une release GitHub avec
+  `MurContreTerre-windows.zip` en pièce jointe.
+
+Construction locale (Windows, ou toute plateforme pour du
+débogage) :
+
+```bash
+cd "Mur contre terre"
+pip install -e ".[dev]"
+pip install pyinstaller
+pyinstaller mur_contre_terre.spec --noconfirm
+./dist/MurContreTerre --autotest        # .\dist\MurContreTerre.exe sous Windows
+```
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 10 sur 12). L'empaquetage en
-exécutable Windows et l'intégration continue (lot 11) ne sont pas
-encore implémentés. Ne pas utiliser en l'état pour une justification
-de projet.
+Ce dépôt est en développement (lot 11 sur 12). Le lot 12 (validation
+contre les cas de référence Excel du bureau d'ingénieurs) reste à
+faire — il nécessite les cas de référence de l'utilisateur, non
+disponibles à ce stade. **Ne pas utiliser ce dépôt pour une
+justification de projet réelle sans cette validation**, et en gardant
+à l'esprit les points explicitement signalés comme non confirmés dans
+ce document (résistance à l'effort tranchant, charges de terre-plein,
+pression de compactage — voir les sections correspondantes ci-dessus).

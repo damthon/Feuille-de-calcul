@@ -171,9 +171,9 @@ hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
     <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
     <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
     <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
-    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 11.</span></div></div>
-    <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
-    <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>lots 1 à 11 faits, lot 12 restant (validation).</span></div></div>
+    <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence — lot 12, en attente de vos cas.</span></div></div>
+    <div class="step now"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>fait — packaging PyInstaller + CI GitHub Actions, comme Nommogramme.</span></div></div>
   </div>
   </div>
 </section>
@@ -618,7 +618,7 @@ class Projet:
     <li><strong>Interface</strong> — implémentée au lot 9 : fenêtre Tkinter à onglets (géométrie, sol, appuis, matériaux, charges, résultats), même charpente que <code>interface/bureau.py</code> de Nommogramme — <code>interface/saisie.py</code> porte l'unique traduction vers les dataclasses de calcul (testée sans Tkinter), <code>interface/infobulle.py</code> l'aide au survol. <code>cli.py</code> fournit le point d'entrée (<code>mur-contre-terre</code>) : sans sous-commande il lance l'interface, <code>verifier</code> calcule un projet sans fenêtre.</li>
     <li><strong>Sauvegarde/chargement</strong> — implémentée dès le lot 1 : sérialisation JSON de <code>Projet</code>, extension <code>.mct</code>, réutilisée telle quelle par l'interface de bureau.</li>
     <li><strong>Export</strong> — implémenté au lot 10 : PDF (<code>export.py</code>, via <code>reportlab</code> — préféré à <code>weasyprint</code>, sans dépendance système native, plus simple à empaqueter avec PyInstaller) et Excel (<code>openpyxl</code>, trois feuilles : données, combinaisons ELU, vérification de section) <em>(décision validée, §13)</em>. Accessible depuis l'interface de bureau et <code>mur-contre-terre verifier … -o fichier.pdf/.xlsx</code>.</li>
-    <li><strong>Exécutable</strong> : <code>PyInstaller</code>, <code>.spec</code> dédié excluant les mêmes lourdeurs inutiles (pandas/pyarrow si Streamlit n'est finalement pas retenu), build Windows via GitHub Actions au push d'un tag, <code>--autotest</code> avant publication.</li>
+    <li><strong>Exécutable</strong> — implémenté au lot 11 : <code>mur_contre_terre.spec</code> (racine du dépôt), excluant les mêmes lourdeurs inutiles (pandas/pyarrow, Qt, IPython…), build Windows via GitHub Actions (<code>.github/workflows/build-release.yml</code>) au push d'un tag <code>mur-contre-terre-v*</code>, <code>--autotest</code> avant publication d'une release GitHub (<code>MurContreTerre-windows.zip</code>). <code>.github/workflows/tests.yml</code> exécute la suite de tests à chaque push/PR.</li>
   </ul>
   </div>
 </section>
@@ -654,7 +654,7 @@ class Projet:
       <tr><td class="num">8</td><td>Note de calcul, figures (trace.py) — <strong>fait</strong></td></tr>
       <tr><td class="num">9</td><td>Interface Tkinter, sauvegarde/chargement de projet</td></tr>
       <tr><td class="num">10</td><td>Export PDF / Excel</td></tr>
-      <tr><td class="num">11</td><td>Empaquetage exécutable Windows, CI, README</td></tr>
+      <tr><td class="num">11</td><td>Empaquetage exécutable Windows, CI, README — <strong>fait</strong></td></tr>
       <tr><td class="num">12</td><td>Validation contre vos cas Excel (étape 5)</td></tr>
     </tbody>
   </table>
