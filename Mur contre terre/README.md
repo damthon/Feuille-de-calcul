@@ -33,7 +33,7 @@ d'origine.
 | 7 | Solveur incrémental non linéaire | fait |
 | 8 | Note de calcul, figures | fait |
 | 9 | Interface de bureau, sauvegarde/chargement de projet | fait |
-| 10 | Export PDF / Excel | à venir |
+| 10 | Export PDF / Excel | fait |
 | 11 | Empaquetage exécutable Windows, CI | à venir |
 | 12 | Validation contre les cas de référence Excel du bureau | à venir |
 
@@ -321,8 +321,31 @@ manquant) ; `conftest.py` ignore alors `interface/bureau.py` et
 échouer toute la suite — une installation Python standard (Windows,
 macOS) ou l'exécutable empaqueté l'incluent tous deux.
 
+## Utilisation — export PDF et Excel (lot 10)
+
+```python
+from mur_contre_terre.export import exporter_excel, exporter_pdf
+
+exporter_excel(projet, resultat, "note_de_calcul.xlsx")
+exporter_pdf(projet, resultat, "note_de_calcul.pdf")
+```
+
+```bash
+mur-contre-terre verifier projet.mct -o note.pdf    # format déduit de l'extension
+mur-contre-terre verifier projet.mct -o note.xlsx
+```
+
+`export.py` (extra `[export]` : `openpyxl`, `reportlab`) réutilise
+`ResultatCalcul` directement, comme `rapport.py` — aucun des trois ne
+recalcule quoi que ce soit. PDF via `reportlab` (bibliothèque pure
+Python) plutôt que `weasyprint` (dépendances système natives
+Cairo/Pango/GTK) : plus simple à empaqueter de façon fiable avec
+PyInstaller (lot 11). L'interface de bureau propose les trois formats
+(Markdown, PDF, Excel) depuis l'onglet Résultats.
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 9 sur 12). L'export PDF/Excel
-(lot 10) et l'empaquetage en exécutable (lot 11) ne sont pas encore
-implémentés. Ne pas utiliser en l'état pour une justification de projet.
+Ce dépôt est en développement (lot 10 sur 12). L'empaquetage en
+exécutable Windows et l'intégration continue (lot 11) ne sont pas
+encore implémentés. Ne pas utiliser en l'état pour une justification
+de projet.

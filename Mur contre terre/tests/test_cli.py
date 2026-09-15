@@ -66,3 +66,27 @@ def test_verifier_fichier_mal_forme_renvoie_un_code_d_erreur(tmp_path, capsys):
 
     assert code == 1
     assert capsys.readouterr().err
+
+
+def test_verifier_exporte_en_pdf_selon_l_extension(tmp_path):
+    projet_chemin = tmp_path / "projet.mct"
+    _ecrire_projet(projet_chemin)
+    sortie = tmp_path / "note.pdf"
+
+    code = main(["verifier", str(projet_chemin), "-o", str(sortie)])
+
+    assert code == 0
+    assert sortie.read_bytes()[:5] == b"%PDF-"
+
+
+def test_verifier_exporte_en_excel_selon_l_extension(tmp_path):
+    projet_chemin = tmp_path / "projet.mct"
+    _ecrire_projet(projet_chemin)
+    sortie = tmp_path / "note.xlsx"
+
+    code = main(["verifier", str(projet_chemin), "-o", str(sortie)])
+
+    assert code == 0
+    import openpyxl
+
+    assert openpyxl.load_workbook(sortie).sheetnames == ["Données", "Combinaisons ELU", "Vérification de section"]

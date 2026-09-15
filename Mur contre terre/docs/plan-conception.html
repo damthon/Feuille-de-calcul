@@ -171,7 +171,7 @@ hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
     <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
     <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
     <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
-    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 10.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 11.</span></div></div>
     <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
     <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
   </div>
@@ -617,7 +617,7 @@ class Projet:
   <ul>
     <li><strong>Interface</strong> — implémentée au lot 9 : fenêtre Tkinter à onglets (géométrie, sol, appuis, matériaux, charges, résultats), même charpente que <code>interface/bureau.py</code> de Nommogramme — <code>interface/saisie.py</code> porte l'unique traduction vers les dataclasses de calcul (testée sans Tkinter), <code>interface/infobulle.py</code> l'aide au survol. <code>cli.py</code> fournit le point d'entrée (<code>mur-contre-terre</code>) : sans sous-commande il lance l'interface, <code>verifier</code> calcule un projet sans fenêtre.</li>
     <li><strong>Sauvegarde/chargement</strong> — implémentée dès le lot 1 : sérialisation JSON de <code>Projet</code>, extension <code>.mct</code>, réutilisée telle quelle par l'interface de bureau.</li>
-    <li><strong>Export</strong> : PDF (note de calcul mise en page, via <code>weasyprint</code> ou <code>reportlab</code>) et Excel (tableaux de résultats par section, via <code>openpyxl</code>) <em>(décision validée, §13)</em>.</li>
+    <li><strong>Export</strong> — implémenté au lot 10 : PDF (<code>export.py</code>, via <code>reportlab</code> — préféré à <code>weasyprint</code>, sans dépendance système native, plus simple à empaqueter avec PyInstaller) et Excel (<code>openpyxl</code>, trois feuilles : données, combinaisons ELU, vérification de section) <em>(décision validée, §13)</em>. Accessible depuis l'interface de bureau et <code>mur-contre-terre verifier … -o fichier.pdf/.xlsx</code>.</li>
     <li><strong>Exécutable</strong> : <code>PyInstaller</code>, <code>.spec</code> dédié excluant les mêmes lourdeurs inutiles (pandas/pyarrow si Streamlit n'est finalement pas retenu), build Windows via GitHub Actions au push d'un tag, <code>--autotest</code> avant publication.</li>
   </ul>
   </div>

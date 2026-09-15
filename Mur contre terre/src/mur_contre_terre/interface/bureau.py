@@ -207,7 +207,9 @@ class Application(tk.Tk):
         barre = tk.Frame(cadre)
         barre.pack(fill="x", pady=4)
         tk.Button(barre, text="Calculer", command=self._calculer).pack(side="left", padx=4)
-        tk.Button(barre, text="Exporter la note de calcul (.md)…", command=self._exporter_note).pack(side="left", padx=4)
+        tk.Button(barre, text="Exporter en Markdown…", command=self._exporter_note).pack(side="left", padx=4)
+        tk.Button(barre, text="Exporter en PDF…", command=self._exporter_pdf).pack(side="left", padx=4)
+        tk.Button(barre, text="Exporter en Excel…", command=self._exporter_excel).pack(side="left", padx=4)
         self.label_statut = tk.Label(barre, text="", fg="#A8391A")
         self.label_statut.pack(side="left", padx=8)
 
@@ -280,15 +282,50 @@ class Application(tk.Tk):
                 ),
             )
 
-    def _exporter_note(self) -> None:
+    def _resultat_disponible(self) -> bool:
         if self.projet_courant is None or self.resultat is None:
             messagebox.showwarning("Aucun résultat", "Lancez d'abord un calcul (bouton « Calculer »).")
+            return False
+        return True
+
+    def _exporter_note(self) -> None:
+        if not self._resultat_disponible():
             return
         chemin = filedialog.asksaveasfilename(defaultextension=".md", filetypes=[("Markdown", "*.md")])
         if not chemin:
             return
         with open(chemin, "w", encoding="utf-8") as fichier:
             fichier.write(generer_note_calcul(self.projet_courant, self.resultat))
+
+    def _exporter_pdf(self) -> None:
+        if not self._resultat_disponible():
+            return
+        chemin = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
+        if not chemin:
+            return
+        try:
+            from mur_contre_terre.export import exporter_pdf
+
+            exporter_pdf(self.projet_courant, self.resultat, chemin)
+        except ImportError:
+            messagebox.showerror(
+                "Extra manquant", "L'export PDF nécessite l'extra [export] : pip install -e \".[export]\""
+            )
+
+    def _exporter_excel(self) -> None:
+        if not self._resultat_disponible():
+            return
+        chemin = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
+        if not chemin:
+            return
+        try:
+            from mur_contre_terre.export import exporter_excel
+
+            exporter_excel(self.projet_courant, self.resultat, chemin)
+        except ImportError:
+            messagebox.showerror(
+                "Extra manquant", "L'export Excel nécessite l'extra [export] : pip install -e \".[export]\""
+            )
 
     def _nouveau(self) -> None:
         self.charges.clear()
