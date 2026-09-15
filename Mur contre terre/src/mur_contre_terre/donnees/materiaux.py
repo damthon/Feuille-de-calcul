@@ -57,12 +57,15 @@ class Acier:
     fsk: float = 500e6
     Es: float = 205e9
     epsilon_ud: float = 0.045
+    k_durcissement: float = 1.08  # (ft/fy)k minimal, classe de ductilité B — SIA 262 tableau 26 / EN 1992-1-1 annexe C
 
     def __post_init__(self) -> None:
         for nom in ("fsk", "Es", "epsilon_ud"):
             valeur = getattr(self, nom)
             if valeur <= 0:
                 raise ValueError(f"Acier.{nom} doit être strictement positif (reçu {valeur})")
+        if self.k_durcissement <= 1.0:
+            raise ValueError(f"Acier.k_durcissement doit être strictement supérieur à 1 (reçu {self.k_durcissement})")
 
     @classmethod
     def b500b(cls) -> "Acier":

@@ -171,7 +171,7 @@ hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
     <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
     <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
     <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
-    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 5.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 9.</span></div></div>
     <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
     <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
   </div>
@@ -363,6 +363,9 @@ class Projet:
    Résultats (§10 de votre prompt) + note de calcul + export</pre>
 
   <p>La combinaison la plus défavorable pour chaque effort (N, V, M) et chaque section est retenue pour le dimensionnement de l'armature ; toutes les combinaisons restent accessibles pour inspection.</p>
+
+  <h4>Orchestration bout en bout — implémentée au lot 8</h4>
+  <p><code>calcul.py</code> (racine du paquet) assemble ce flux : maillage → charges nodales par cas → combinaisons ELU/ELS → résolution linéaire par combinaison → armature nécessaire et effort tranchant par élément, enveloppe des combinaisons ELU (<code>calculer(projet) -&gt; ResultatCalcul</code>). C'est la première couche du dépôt qui connaît à la fois <code>mecanique/</code> et <code>section_ba/</code> — le rôle attendu d'une orchestration en aval. La convention de signe M_Ed → face tendue (mecanique vs section_ba) a été vérifiée physiquement sur le cas de la poussée des terres seule (voir l'en-tête de <code>calcul.py</code>) : aucune conversion n'est nécessaire entre les deux modules. <code>rapport.py</code> met en forme le résultat en note de calcul Markdown, traçable (chaque grandeur cite sa clause SIA) ; <code>trace.py</code> (extra <code>[trace]</code>) fournit les figures.</p>
   </div>
 </section>
 
@@ -584,6 +587,15 @@ class Projet:
   <p>Pour chaque section et chaque N donné : équilibre des déformations (Navier‑Bernoulli), lois avancées du béton (parabole‑rectangle + traction jusqu'à fissuration <span class="c">SIA 262 §4.1</span>) et de l'acier (bilinéaire écrouissable, B500B) → moment résistant, courbure χ associée, et rigidité sécante :</p>
   <div class="eq"><div class="f">EI(x) = M(x) / χ(x)</div><div class="ref">définition sécante</div></div>
 
+  <h4>Lois de matériaux et flexion composée — implémentées au lot 5</h4>
+  <p><code>section_ba/modele_beton.py</code> et <code>modele_acier.py</code> portent les lois ci-dessus (fonctions pures, déformation/contrainte positives en traction). <code>flexion_composee.py</code> dimensionne l'armature nécessaire d'une section rectangulaire (deux lits, un par face) pour un couple (N_Ed, M_Ed) donné : la fibre extrême comprimée est fixée à son état ultime −εcu (domaine courant d'une paroi normalement armée) et une bissection sur la profondeur de l'axe neutre trouve l'aire d'armature tendue qui équilibre exactement les efforts, intégrée numériquement par fibres sur la hauteur de section. Le résultat retient le plus grand de cette valeur et de l'armature minimale normative (formule harmonisée EN 1992‑1‑1 §9.2.1.1). Ce module a son propre repère local (z = 0 côté terre, z = h côté intérieur) et sa propre convention de signe pour M_Ed, documentés en tête de fichier — la traduction depuis l'enveloppe des combinaisons du maillage (§5, §8) reste à faire à un lot ultérieur (rapport/vérification bout en bout).</p>
+
+  <h4>Effort tranchant — implémenté au lot 5, formule à confirmer</h4>
+  <p><code>effort_tranchant.py</code> calcule la résistance sans armature transversale. Aucun extrait SIA 262 §4.3.3 vérifié n'a été fourni pour ce lot (contrairement à la poussée des terres, §7) : la formule retenue est celle, harmonisée, d'EN 1992‑1‑1 §6.2.2 — <strong>à recouper avec le texte exact de la SIA 262 au lot 12</strong>, comme la pression de compactage et les charges de terre-plein (§7-8), et avec une attention particulière puisqu'un mur de sous-sol sans étriers rend cette vérification potentiellement dimensionnante.</p>
+
+  <h4>Moment-courbure — implémenté au lot 6</h4>
+  <p><code>section_ba/moment_courbure.py</code> réutilise les lois de matériaux du lot 5 pour tracer M-χ(N) à armature fixe (deux lits donnés) et N maintenu constant : pour une courbure χ croissante, une bissection sur la déformation de référence ε0 (au centre de gravité) équilibre N, jusqu'à ce qu'une fibre de béton atteigne −εcu ou qu'un lit d'armature atteigne ±εud (rupture). EI sécant = M/χ en découle à chaque palier. C'est cette rigidité sécante par section que le solveur incrémental du lot 7 met à jour à chaque palier de charge, le long de la hauteur du mur.</p>
+
   <h4>Chargement incrémental</h4>
   <ol>
     <li>Charge appliquée par paliers (1 %, …, 100 %, pas paramétrable).</li>
@@ -592,6 +604,9 @@ class Projet:
     <li>Itération jusqu'à convergence (écart EI sous tolérance) ou divergence détectée (non-convergence après N itérations) — le dernier palier convergé est noté comme charge maximale atteinte.</li>
   </ol>
   <p>Sortie : courbe charge–déplacement (tête ou point maximal) en fonction du % de charge, comme demandé en §8 de votre prompt.</p>
+
+  <h4>Implémenté au lot 7</h4>
+  <p><code>nonlineaire/solveur_incremental.py</code> orchestre <code>mecanique/</code> et <code>section_ba/</code> (seul module du dépôt à le faire — les deux s'ignorent mutuellement) : à chaque palier, K est assemblée avec l'EI(x) courant de chaque élément (EA reste élastique, section brute — seul EI est mis à jour, conformément à ce paragraphe) ; les efforts internes du palier déterminent une nouvelle rigidité sécante via <code>section_ba.moment_courbure.rigidite_secante</code>, par relaxation (moyenne successive, pour la stabilité) jusqu'à convergence de l'écart relatif ou jusqu'au nombre maximal d'itérations. Une section qui dépasse sa résistance (M_Ed hors de la plage atteignable) arrête le chargement : le dernier palier convergé est retenu comme charge maximale atteinte. <code>moment_courbure.py</code> utilise les résistances caractéristiques (fck/fsk) plutôt que les résistances de calcul ELU (fcd/fsd) de <code>flexion_composee.py</code>, pour une réponse M-χ réaliste plutôt qu'une marge de sécurité — voir la note en tête de fichier sur la dissymétrie résiduelle de tangente initiale (≈ 9 % à très faible courbure) que cela laisse. Coût : les bissections imbriquées (pas de solveur analytique pour des matériaux non linéaires) restent lentes, de l'ordre de la minute pour 6 éléments × 20 paliers.</p>
   </div>
 </section>
 
@@ -633,10 +648,10 @@ class Projet:
       <tr><td class="num">2</td><td>Poussée des terres (Coulomb), hydrostatique, compactage — <code>geotechnique/</code> — <strong>fait</strong></td></tr>
       <tr><td class="num">3</td><td>Maillage, rigidité élémentaire, appuis, solveur linéaire — <code>mecanique/</code> — <strong>fait</strong></td></tr>
       <tr><td class="num">4</td><td>Combinaisons SIA 260, charges nodales équivalentes, enveloppes — <strong>fait</strong></td></tr>
-      <tr><td class="num">5</td><td>Lois de matériaux avancées, flexion composée, effort tranchant — <code>section_ba/</code></td></tr>
-      <tr><td class="num">6</td><td>Moment-courbure, EI sécant, encastrement élastique kθ</td></tr>
-      <tr><td class="num">7</td><td>Solveur incrémental non linéaire — <code>nonlineaire/</code></td></tr>
-      <tr><td class="num">8</td><td>Note de calcul, figures (trace.py)</td></tr>
+      <tr><td class="num">5</td><td>Lois de matériaux avancées, flexion composée, effort tranchant — <code>section_ba/</code> — <strong>fait</strong></td></tr>
+      <tr><td class="num">6</td><td>Moment-courbure, EI sécant, encastrement élastique kθ — <strong>fait</strong></td></tr>
+      <tr><td class="num">7</td><td>Solveur incrémental non linéaire — <code>nonlineaire/</code> — <strong>fait</strong></td></tr>
+      <tr><td class="num">8</td><td>Note de calcul, figures (trace.py) — <strong>fait</strong></td></tr>
       <tr><td class="num">9</td><td>Interface Tkinter, sauvegarde/chargement de projet</td></tr>
       <tr><td class="num">10</td><td>Export PDF / Excel</td></tr>
       <tr><td class="num">11</td><td>Empaquetage exécutable Windows, CI, README</td></tr>

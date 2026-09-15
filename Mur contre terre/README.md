@@ -28,10 +28,10 @@ d'origine.
 | 2 | Poussée des terres (Coulomb), hydrostatique, compactage | fait |
 | 3 | Maillage, rigidité élémentaire, appuis, solveur linéaire | fait |
 | 4 | Combinaisons SIA 260, charges nodales équivalentes | fait |
-| 5 | Lois de matériaux avancées, flexion composée, effort tranchant | à venir |
-| 6 | Moment-courbure, EI sécant, encastrement élastique kθ | à venir |
-| 7 | Solveur incrémental non linéaire | à venir |
-| 8 | Note de calcul, figures | à venir |
+| 5 | Lois de matériaux avancées, flexion composée, effort tranchant | fait |
+| 6 | Moment-courbure, EI sécant, encastrement élastique kθ | fait |
+| 7 | Solveur incrémental non linéaire | fait |
+| 8 | Note de calcul, figures | fait |
 | 9 | Interface de bureau, sauvegarde/chargement de projet | à venir |
 | 10 | Export PDF / Excel | à venir |
 | 11 | Empaquetage exécutable Windows, CI | à venir |
@@ -177,9 +177,125 @@ La charge surfacique et la charge linéaire sur le terre-plein utilisent une
 formule élastique (Boussinesq, paroi rigide) faute de clause SIA fournie —
 comme la pression de compactage, à confirmer au lot 12.
 
+## Utilisation — section béton armé (lot 5)
+
+```python
+from mur_contre_terre.section_ba import SectionRectangulaire, armature_necessaire, resistance_effort_tranchant
+
+section = SectionRectangulaire(epaisseur=0.30, enrobage_terre=0.05, enrobage_interieur=0.04)
+
+# M_Ed > 0 tend la face intérieure, M_Ed < 0 tend la face terre (voir flexion_composee.py)
+resultat = armature_necessaire(
+    n_ed=-150e3, m_ed=80e3, section=section, materiaux=projet.materiaux, face_tendue="interieur",
+)
+resultat.armature_necessaire  # [m²/m] — max(armature calculée, armature minimale normative)
+
+v_rd = resistance_effort_tranchant(
+    projet.materiaux.beton, largeur=1.0, hauteur_utile=0.26, taux_armature=0.003,
+)
+```
+
+Lois de matériaux (`section_ba/modele_beton.py`, `modele_acier.py`) :
+parabole-rectangle en compression + traction linéaire jusqu'à fissuration
+pour le béton, bilinéaire écrouissable pour l'acier B500B — SIA 262 §4.1.
+`armature_necessaire` résout par bissection l'équilibre de section
+(compatibilité des déformations, fibre extrême comprimée à −εcu) pour
+trouver l'aire d'armature tendue qui équilibre exactement (N_Ed, M_Ed) ;
+le résultat retient le plus grand de cette valeur et de l'armature
+minimale normative.
+
+La résistance à l'effort tranchant (`effort_tranchant.py`) utilise la
+formule harmonisée EN 1992-1-1 §6.2.2, faute d'extrait SIA 262 §4.3.3
+vérifié — comme la pression de compactage et les charges de terre-plein,
+à confirmer au lot 12.
+
+## Utilisation — moment-courbure (lot 6)
+
+```python
+from mur_contre_terre.section_ba import courbe_moment_courbure, rigidite_non_fissuree
+
+# armature fixe (contrairement à armature_necessaire, qui la dimensionne) ;
+# sens=+1 trace la flexion qui tend la face intérieure (χ > 0), sens=-1 la face terre
+courbe = courbe_moment_courbure(
+    n_ed=-150e3, section=section, materiaux=projet.materiaux,
+    armature_terre=8e-4, armature_interieur=8e-4, sens=1, nb_paliers=20,
+)
+courbe[-1].chi   # courbure de rupture (écrasement du béton ou rupture de l'acier)
+courbe[0].ei_secant  # rigidité sécante EI = M/χ, décroissante avec la fissuration
+```
+
+`moment_courbure.py` résout, pour une courbure χ croissante et un effort
+normal N maintenu constant, la déformation de référence ε0 qui équilibre
+N (bissection), jusqu'à ce qu'une fibre de béton atteigne −εcu ou qu'un
+lit d'armature atteigne ±εud. C'est la rigidité sécante EI(x) que le
+solveur incrémental non linéaire (lot 7) mettra à jour à chaque palier de
+charge le long de la hauteur du mur.
+
+## Utilisation — solveur incrémental non linéaire (lot 7)
+
+```python
+from mur_contre_terre.nonlineaire import resoudre_incremental
+
+resultat = resoudre_incremental(
+    maillage, geometrie, projet.materiaux, projet.appuis, projet.sol,
+    forces_nodales=F,  # vecteur à 100 % de charge (un des vecteurs de charges nodales du lot 4)
+    armature_terre=6e-4, armature_interieur=6e-4,  # [m²/m], scalaire ou un tableau par élément
+    nb_paliers=20, tolerance=1e-3, max_iterations=30,
+)
+resultat.convergence_totale        # False si la structure ne reprend pas 100 % de la charge
+resultat.fraction_charge_maximale  # dernier palier convergé
+resultat.paliers[-1].resultat.deplacements  # comme mecanique.resoudre, au dernier palier
+```
+
+`nonlineaire/solveur_incremental.py` orchestre `mecanique/` et
+`section_ba/` : à chaque palier de charge, K est assemblée avec l'EI(x)
+courant de chaque élément (EA reste à sa valeur élastique de section
+brute, seul EI est mis à jour — §9 du plan) ; les efforts internes du
+palier déterminent une nouvelle rigidité sécante par
+`section_ba.moment_courbure.rigidite_secante`, jusqu'à convergence ou,
+si une section dépasse sa résistance, arrêt du chargement (le dernier
+palier convergé est la charge maximale atteinte sous cette hypothèse
+d'armature). `moment_courbure.py` utilise les résistances
+caractéristiques (fck/fsk), pas les résistances de calcul ELU (fcd/fsd)
+de `flexion_composee.py` : ce module vise une réponse M-χ réaliste
+(déplacements, charge de ruine), pas une marge de sécurité normative —
+voir la note en tête de fichier pour la légère dissymétrie résiduelle de
+tangente initiale que cela laisse (≈ 9 % à très faible courbure).
+
+Cette recherche par bissections imbriquées (matériaux non linéaires,
+pas de solveur analytique) reste coûteuse : un maillage de 6 éléments
+sur 20 paliers prend de l'ordre de la minute sur une machine courante.
+Un profil plus fin (nb_paliers, max_iterations) ou une meilleure
+stratégie d'accélération pourront être revus ultérieurement si
+nécessaire.
+
+## Utilisation — calcul complet et note de calcul (lot 8)
+
+```python
+from mur_contre_terre.calcul import calculer
+from mur_contre_terre.rapport import generer_note_calcul
+
+resultat = calculer(projet)          # maillage → charges → combinaisons ELU/ELS → vérification de section
+resultat.verifications               # une VerificationSection par élément : armature + effort tranchant
+md = generer_note_calcul(projet, resultat)
+open("note_de_calcul.md", "w").write(md)
+```
+
+`calcul.py` est la première couche du dépôt à connaître à la fois
+`mecanique/` et `section_ba/` — c'est l'orchestration bout en bout
+(maillage, charges nodales par cas, combinaisons SIA 260, résolution
+linéaire par combinaison, puis armature nécessaire et effort tranchant
+par élément, enveloppe des combinaisons ELU). Elle ne couvre pas encore
+la non-linéarité matérielle (`nonlineaire.resoudre_incremental`, à
+appeler séparément) ni l'export PDF/Excel (lot 10).
+
+`trace.py` (extra `[trace]`, matplotlib) fournit les figures —
+géométrie, diagrammes N/V/M, moment-courbure, déformée — chacune
+retournée comme `matplotlib.figure.Figure` à enregistrer ou intégrer
+par l'appelant.
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 4 sur 12). La vérification de section
-(flexion composée, effort tranchant, armature) et les résultats affichables
-ne sont pas encore implémentés. Ne pas utiliser en l'état pour une
-justification de projet.
+Ce dépôt est en développement (lot 8 sur 12). L'interface de bureau
+(lot 9) et l'export PDF/Excel (lot 10) ne sont pas encore implémentés.
+Ne pas utiliser en l'état pour une justification de projet.
