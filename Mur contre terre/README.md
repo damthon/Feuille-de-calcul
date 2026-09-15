@@ -32,9 +32,9 @@ d'origine.
 | 6 | Moment-courbure, EI sécant, encastrement élastique kθ | fait |
 | 7 | Solveur incrémental non linéaire | fait |
 | 8 | Note de calcul, figures | fait |
-| 9 | Interface de bureau, sauvegarde/chargement de projet | à venir |
-| 10 | Export PDF / Excel | à venir |
-| 11 | Empaquetage exécutable Windows, CI | à venir |
+| 9 | Interface de bureau, sauvegarde/chargement de projet | fait |
+| 10 | Export PDF / Excel | fait |
+| 11 | Empaquetage exécutable Windows, CI | fait |
 | 12 | Validation contre les cas de référence Excel du bureau | à venir |
 
 ## Installation
@@ -294,8 +294,89 @@ géométrie, diagrammes N/V/M, moment-courbure, déformée — chacune
 retournée comme `matplotlib.figure.Figure` à enregistrer ou intégrer
 par l'appelant.
 
+## Utilisation — interface de bureau et ligne de commande (lot 9)
+
+```bash
+mur-contre-terre                                   # lance l'interface de bureau (Tkinter)
+mur-contre-terre verifier projet.mct                # calcule et affiche la note de calcul
+mur-contre-terre verifier projet.mct -o note.md      # … ou l'écrit dans un fichier
+```
+
+`interface/bureau.py` (Tkinter, module de la bibliothèque standard —
+aucune dépendance supplémentaire) ouvre une fenêtre à onglets
+(géométrie, sol, appuis, matériaux, charges, résultats) ;
+`interface/saisie.py` porte la seule traduction entre les champs
+(unités utilisateur : m, °, kN, kN/m², kN/m³, MPa) et les dataclasses de
+calcul — testée sans Tkinter. Sauvegarde/chargement de projet réutilise
+directement `Projet.sauvegarder`/`Projet.charger` (JSON `.mct`, lot 1).
+`cli.py` fournit le point d'entrée (`mur-contre-terre`, voir
+`[project.scripts]`) : sans sous-commande il lance l'interface, sinon
+`verifier` calcule un projet sans fenêtre — c'est aussi la base de
+l'exécutable empaqueté (lot 11, `--autotest`).
+
+Tkinter fait partie de la bibliothèque standard mais n'est pas toujours
+présent dans un environnement de développement minimal (ex. `python3-tk`
+manquant) ; `conftest.py` ignore alors `interface/bureau.py` et
+`interface/infobulle.py` à la collecte des tests plutôt que de faire
+échouer toute la suite — une installation Python standard (Windows,
+macOS) ou l'exécutable empaqueté l'incluent tous deux.
+
+## Utilisation — export PDF et Excel (lot 10)
+
+```python
+from mur_contre_terre.export import exporter_excel, exporter_pdf
+
+exporter_excel(projet, resultat, "note_de_calcul.xlsx")
+exporter_pdf(projet, resultat, "note_de_calcul.pdf")
+```
+
+```bash
+mur-contre-terre verifier projet.mct -o note.pdf    # format déduit de l'extension
+mur-contre-terre verifier projet.mct -o note.xlsx
+```
+
+`export.py` (extra `[export]` : `openpyxl`, `reportlab`) réutilise
+`ResultatCalcul` directement, comme `rapport.py` — aucun des trois ne
+recalcule quoi que ce soit. PDF via `reportlab` (bibliothèque pure
+Python) plutôt que `weasyprint` (dépendances système natives
+Cairo/Pango/GTK) : plus simple à empaqueter de façon fiable avec
+PyInstaller (lot 11). L'interface de bureau propose les trois formats
+(Markdown, PDF, Excel) depuis l'onglet Résultats.
+
+## Exécutable Windows et intégration continue (lot 11)
+
+`mur_contre_terre.spec` (racine du dépôt) empaquette `cli.py` avec
+PyInstaller en un exécutable Windows unique (`MurContreTerre.exe`,
+partagé CLI/GUI — voir `cli.py`). Deux workflows GitHub Actions :
+
+- [`tests.yml`](../.github/workflows/tests.yml) : suite de tests
+  complète (`pytest`, avec `python3-tk` et `xvfb`) à chaque push/PR
+  touchant ce dossier.
+- [`build-release.yml`](../.github/workflows/build-release.yml) :
+  au push d'un tag `mur-contre-terre-v*` (ou déclenchement manuel),
+  construit l'exécutable sur `windows-latest`, le vérifie
+  (`MurContreTerre.exe --autotest` — mêmes imports différés que
+  matplotlib Tk chez Nommogramme), puis publie une release GitHub avec
+  `MurContreTerre-windows.zip` en pièce jointe.
+
+Construction locale (Windows, ou toute plateforme pour du
+débogage) :
+
+```bash
+cd "Mur contre terre"
+pip install -e ".[dev]"
+pip install pyinstaller
+pyinstaller mur_contre_terre.spec --noconfirm
+./dist/MurContreTerre --autotest        # .\dist\MurContreTerre.exe sous Windows
+```
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 8 sur 12). L'interface de bureau
-(lot 9) et l'export PDF/Excel (lot 10) ne sont pas encore implémentés.
-Ne pas utiliser en l'état pour une justification de projet.
+Ce dépôt est en développement (lot 11 sur 12). Le lot 12 (validation
+contre les cas de référence Excel du bureau d'ingénieurs) reste à
+faire — il nécessite les cas de référence de l'utilisateur, non
+disponibles à ce stade. **Ne pas utiliser ce dépôt pour une
+justification de projet réelle sans cette validation**, et en gardant
+à l'esprit les points explicitement signalés comme non confirmés dans
+ce document (résistance à l'effort tranchant, charges de terre-plein,
+pression de compactage — voir les sections correspondantes ci-dessus).
