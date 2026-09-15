@@ -28,7 +28,7 @@ d'origine.
 | 2 | Poussée des terres (Coulomb), hydrostatique, compactage | fait |
 | 3 | Maillage, rigidité élémentaire, appuis, solveur linéaire | fait |
 | 4 | Combinaisons SIA 260, charges nodales équivalentes | fait |
-| 5 | Lois de matériaux avancées, flexion composée, effort tranchant | à venir |
+| 5 | Lois de matériaux avancées, flexion composée, effort tranchant | fait |
 | 6 | Moment-courbure, EI sécant, encastrement élastique kθ | à venir |
 | 7 | Solveur incrémental non linéaire | à venir |
 | 8 | Note de calcul, figures | à venir |
@@ -177,9 +177,42 @@ La charge surfacique et la charge linéaire sur le terre-plein utilisent une
 formule élastique (Boussinesq, paroi rigide) faute de clause SIA fournie —
 comme la pression de compactage, à confirmer au lot 12.
 
+## Utilisation — section béton armé (lot 5)
+
+```python
+from mur_contre_terre.section_ba import SectionRectangulaire, armature_necessaire, resistance_effort_tranchant
+
+section = SectionRectangulaire(epaisseur=0.30, enrobage_terre=0.05, enrobage_interieur=0.04)
+
+# M_Ed > 0 tend la face intérieure, M_Ed < 0 tend la face terre (voir flexion_composee.py)
+resultat = armature_necessaire(
+    n_ed=-150e3, m_ed=80e3, section=section, materiaux=projet.materiaux, face_tendue="interieur",
+)
+resultat.armature_necessaire  # [m²/m] — max(armature calculée, armature minimale normative)
+
+v_rd = resistance_effort_tranchant(
+    projet.materiaux.beton, largeur=1.0, hauteur_utile=0.26, taux_armature=0.003,
+)
+```
+
+Lois de matériaux (`section_ba/modele_beton.py`, `modele_acier.py`) :
+parabole-rectangle en compression + traction linéaire jusqu'à fissuration
+pour le béton, bilinéaire écrouissable pour l'acier B500B — SIA 262 §4.1.
+`armature_necessaire` résout par bissection l'équilibre de section
+(compatibilité des déformations, fibre extrême comprimée à −εcu) pour
+trouver l'aire d'armature tendue qui équilibre exactement (N_Ed, M_Ed) ;
+le résultat retient le plus grand de cette valeur et de l'armature
+minimale normative.
+
+La résistance à l'effort tranchant (`effort_tranchant.py`) utilise la
+formule harmonisée EN 1992-1-1 §6.2.2, faute d'extrait SIA 262 §4.3.3
+vérifié — comme la pression de compactage et les charges de terre-plein,
+à confirmer au lot 12.
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 4 sur 12). La vérification de section
-(flexion composée, effort tranchant, armature) et les résultats affichables
-ne sont pas encore implémentés. Ne pas utiliser en l'état pour une
-justification de projet.
+Ce dépôt est en développement (lot 5 sur 12). L'assemblage complet d'un
+calcul de mur (maillage → charges → enveloppe → vérification de section)
+n'est pas encore orchestré bout en bout, et la non-linéarité matérielle
+(moment-courbure, solveur incrémental, lots 6-7) n'est pas implémentée.
+Ne pas utiliser en l'état pour une justification de projet.

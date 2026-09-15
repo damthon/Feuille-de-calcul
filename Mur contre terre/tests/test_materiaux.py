@@ -37,3 +37,12 @@ def test_acier_b500b():
 def test_materiaux_enrobage_non_positif_leve_une_erreur():
     with pytest.raises(ValueError):
         Materiaux(beton=Beton.depuis_classe("C30/37"), acier=Acier.b500b(), enrobage_terre=0.0, enrobage_interieur=0.04)
+
+
+def test_acier_k_durcissement_par_defaut():
+    assert math.isclose(Acier.b500b().k_durcissement, 1.08)
+
+
+def test_acier_k_durcissement_non_superieur_a_un_leve_une_erreur():
+    with pytest.raises(ValueError):
+        Acier(k_durcissement=1.0)
