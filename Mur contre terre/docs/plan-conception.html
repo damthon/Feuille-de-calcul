@@ -171,7 +171,7 @@ hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
     <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
     <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
     <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
-    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 6.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 7.</span></div></div>
     <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
     <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
   </div>
@@ -590,6 +590,9 @@ class Projet:
   <h4>Effort tranchant — implémenté au lot 5, formule à confirmer</h4>
   <p><code>effort_tranchant.py</code> calcule la résistance sans armature transversale. Aucun extrait SIA 262 §4.3.3 vérifié n'a été fourni pour ce lot (contrairement à la poussée des terres, §7) : la formule retenue est celle, harmonisée, d'EN 1992‑1‑1 §6.2.2 — <strong>à recouper avec le texte exact de la SIA 262 au lot 12</strong>, comme la pression de compactage et les charges de terre-plein (§7-8), et avec une attention particulière puisqu'un mur de sous-sol sans étriers rend cette vérification potentiellement dimensionnante.</p>
 
+  <h4>Moment-courbure — implémenté au lot 6</h4>
+  <p><code>section_ba/moment_courbure.py</code> réutilise les lois de matériaux du lot 5 pour tracer M-χ(N) à armature fixe (deux lits donnés) et N maintenu constant : pour une courbure χ croissante, une bissection sur la déformation de référence ε0 (au centre de gravité) équilibre N, jusqu'à ce qu'une fibre de béton atteigne −εcu ou qu'un lit d'armature atteigne ±εud (rupture). EI sécant = M/χ en découle à chaque palier. C'est cette rigidité sécante par section que le solveur incrémental du lot 7 met à jour à chaque palier de charge, le long de la hauteur du mur.</p>
+
   <h4>Chargement incrémental</h4>
   <ol>
     <li>Charge appliquée par paliers (1 %, …, 100 %, pas paramétrable).</li>
@@ -640,7 +643,7 @@ class Projet:
       <tr><td class="num">3</td><td>Maillage, rigidité élémentaire, appuis, solveur linéaire — <code>mecanique/</code> — <strong>fait</strong></td></tr>
       <tr><td class="num">4</td><td>Combinaisons SIA 260, charges nodales équivalentes, enveloppes — <strong>fait</strong></td></tr>
       <tr><td class="num">5</td><td>Lois de matériaux avancées, flexion composée, effort tranchant — <code>section_ba/</code> — <strong>fait</strong></td></tr>
-      <tr><td class="num">6</td><td>Moment-courbure, EI sécant, encastrement élastique kθ</td></tr>
+      <tr><td class="num">6</td><td>Moment-courbure, EI sécant, encastrement élastique kθ — <strong>fait</strong></td></tr>
       <tr><td class="num">7</td><td>Solveur incrémental non linéaire — <code>nonlineaire/</code></td></tr>
       <tr><td class="num">8</td><td>Note de calcul, figures (trace.py)</td></tr>
       <tr><td class="num">9</td><td>Interface Tkinter, sauvegarde/chargement de projet</td></tr>

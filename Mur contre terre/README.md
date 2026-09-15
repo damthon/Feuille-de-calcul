@@ -29,7 +29,7 @@ d'origine.
 | 3 | Maillage, rigidité élémentaire, appuis, solveur linéaire | fait |
 | 4 | Combinaisons SIA 260, charges nodales équivalentes | fait |
 | 5 | Lois de matériaux avancées, flexion composée, effort tranchant | fait |
-| 6 | Moment-courbure, EI sécant, encastrement élastique kθ | à venir |
+| 6 | Moment-courbure, EI sécant, encastrement élastique kθ | fait |
 | 7 | Solveur incrémental non linéaire | à venir |
 | 8 | Note de calcul, figures | à venir |
 | 9 | Interface de bureau, sauvegarde/chargement de projet | à venir |
@@ -209,10 +209,32 @@ formule harmonisée EN 1992-1-1 §6.2.2, faute d'extrait SIA 262 §4.3.3
 vérifié — comme la pression de compactage et les charges de terre-plein,
 à confirmer au lot 12.
 
+## Utilisation — moment-courbure (lot 6)
+
+```python
+from mur_contre_terre.section_ba import courbe_moment_courbure, rigidite_non_fissuree
+
+# armature fixe (contrairement à armature_necessaire, qui la dimensionne) ;
+# sens=+1 trace la flexion qui tend la face intérieure (χ > 0), sens=-1 la face terre
+courbe = courbe_moment_courbure(
+    n_ed=-150e3, section=section, materiaux=projet.materiaux,
+    armature_terre=8e-4, armature_interieur=8e-4, sens=1, nb_paliers=20,
+)
+courbe[-1].chi   # courbure de rupture (écrasement du béton ou rupture de l'acier)
+courbe[0].ei_secant  # rigidité sécante EI = M/χ, décroissante avec la fissuration
+```
+
+`moment_courbure.py` résout, pour une courbure χ croissante et un effort
+normal N maintenu constant, la déformation de référence ε0 qui équilibre
+N (bissection), jusqu'à ce qu'une fibre de béton atteigne −εcu ou qu'un
+lit d'armature atteigne ±εud. C'est la rigidité sécante EI(x) que le
+solveur incrémental non linéaire (lot 7) mettra à jour à chaque palier de
+charge le long de la hauteur du mur.
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 5 sur 12). L'assemblage complet d'un
+Ce dépôt est en développement (lot 6 sur 12). L'assemblage complet d'un
 calcul de mur (maillage → charges → enveloppe → vérification de section)
-n'est pas encore orchestré bout en bout, et la non-linéarité matérielle
-(moment-courbure, solveur incrémental, lots 6-7) n'est pas implémentée.
-Ne pas utiliser en l'état pour une justification de projet.
+n'est pas encore orchestré bout en bout, et le solveur incrémental non
+linéaire (lot 7) n'est pas implémenté. Ne pas utiliser en l'état pour une
+justification de projet.
