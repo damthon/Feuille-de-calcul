@@ -6,12 +6,13 @@ Bilinéaire écrouissable, symétrique en traction et en compression : palier
 ductilité B pour le B500B (k ≥ 1,08, εuk ≥ 45 ‰, SIA 262 tableau 26).
 
 Convention de signe : déformation et contrainte positives en traction,
-comme ``modele_beton.py``. Fonctions pures.
+comme ``modele_beton.py``. Fonctions pures et vectorisées (``epsilon``
+scalaire ou tableau numpy — voir modele_beton.py).
 """
 
 from __future__ import annotations
 
-import math
+import numpy as np
 
 from mur_contre_terre.donnees.materiaux import Acier
 
@@ -29,8 +30,8 @@ def deformation_elastique(acier: Acier, calcul: bool = True) -> float:
     return resistance / acier.Es
 
 
-def contrainte_acier(epsilon: float, acier: Acier, calcul: bool = True) -> float:
-    """σ(ε) [Pa], positif en traction, symétrique en compression.
+def contrainte_acier(epsilon, acier: Acier, calcul: bool = True):
+    """σ(ε) [Pa], positif en traction, symétrique en compression — ``epsilon`` scalaire ou tableau numpy.
 
     ``calcul=True`` (par défaut) utilise fsd = fsk/γs (vérification ELU) ;
     ``calcul=False`` utilise fsk directement. La déformation est bornée en
@@ -38,14 +39,15 @@ def contrainte_acier(epsilon: float, acier: Acier, calcul: bool = True) -> float
     recherche itérative d'équilibre (``flexion_composee.py``) ; la
     ductilité effectivement mobilisée est du ressort de l'appelant.
     """
+    scalaire = np.ndim(epsilon) == 0
+    eps_signe = np.asarray(epsilon, dtype=float)
+
     resistance = fsd(acier) if calcul else acier.fsk
     eps_y = resistance / acier.Es
-    eps = min(abs(epsilon), acier.epsilon_ud)
+    eps = np.minimum(np.abs(eps_signe), acier.epsilon_ud)
 
-    if eps <= eps_y:
-        sigma = acier.Es * eps
-    else:
-        pente = (acier.k_durcissement * resistance - resistance) / (acier.epsilon_ud - eps_y)
-        sigma = resistance + pente * (eps - eps_y)
+    pente = (acier.k_durcissement * resistance - resistance) / (acier.epsilon_ud - eps_y)
+    sigma = np.where(eps <= eps_y, acier.Es * eps, resistance + pente * (eps - eps_y))
+    sigma = np.sign(eps_signe) * sigma  # sign(0) = 0, et sigma vaut déjà 0 à eps = 0
 
-    return math.copysign(sigma, epsilon) if epsilon != 0.0 else 0.0
+    return float(sigma) if scalaire else sigma

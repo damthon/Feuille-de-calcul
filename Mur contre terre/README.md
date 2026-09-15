@@ -30,7 +30,7 @@ d'origine.
 | 4 | Combinaisons SIA 260, charges nodales équivalentes | fait |
 | 5 | Lois de matériaux avancées, flexion composée, effort tranchant | fait |
 | 6 | Moment-courbure, EI sécant, encastrement élastique kθ | fait |
-| 7 | Solveur incrémental non linéaire | à venir |
+| 7 | Solveur incrémental non linéaire | fait |
 | 8 | Note de calcul, figures | à venir |
 | 9 | Interface de bureau, sauvegarde/chargement de projet | à venir |
 | 10 | Export PDF / Excel | à venir |
@@ -231,10 +231,48 @@ lit d'armature atteigne ±εud. C'est la rigidité sécante EI(x) que le
 solveur incrémental non linéaire (lot 7) mettra à jour à chaque palier de
 charge le long de la hauteur du mur.
 
+## Utilisation — solveur incrémental non linéaire (lot 7)
+
+```python
+from mur_contre_terre.nonlineaire import resoudre_incremental
+
+resultat = resoudre_incremental(
+    maillage, geometrie, projet.materiaux, projet.appuis, projet.sol,
+    forces_nodales=F,  # vecteur à 100 % de charge (un des vecteurs de charges nodales du lot 4)
+    armature_terre=6e-4, armature_interieur=6e-4,  # [m²/m], scalaire ou un tableau par élément
+    nb_paliers=20, tolerance=1e-3, max_iterations=30,
+)
+resultat.convergence_totale        # False si la structure ne reprend pas 100 % de la charge
+resultat.fraction_charge_maximale  # dernier palier convergé
+resultat.paliers[-1].resultat.deplacements  # comme mecanique.resoudre, au dernier palier
+```
+
+`nonlineaire/solveur_incremental.py` orchestre `mecanique/` et
+`section_ba/` : à chaque palier de charge, K est assemblée avec l'EI(x)
+courant de chaque élément (EA reste à sa valeur élastique de section
+brute, seul EI est mis à jour — §9 du plan) ; les efforts internes du
+palier déterminent une nouvelle rigidité sécante par
+`section_ba.moment_courbure.rigidite_secante`, jusqu'à convergence ou,
+si une section dépasse sa résistance, arrêt du chargement (le dernier
+palier convergé est la charge maximale atteinte sous cette hypothèse
+d'armature). `moment_courbure.py` utilise les résistances
+caractéristiques (fck/fsk), pas les résistances de calcul ELU (fcd/fsd)
+de `flexion_composee.py` : ce module vise une réponse M-χ réaliste
+(déplacements, charge de ruine), pas une marge de sécurité normative —
+voir la note en tête de fichier pour la légère dissymétrie résiduelle de
+tangente initiale que cela laisse (≈ 9 % à très faible courbure).
+
+Cette recherche par bissections imbriquées (matériaux non linéaires,
+pas de solveur analytique) reste coûteuse : un maillage de 6 éléments
+sur 20 paliers prend de l'ordre de la minute sur une machine courante.
+Un profil plus fin (nb_paliers, max_iterations) ou une meilleure
+stratégie d'accélération pourront être revus ultérieurement si
+nécessaire.
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 6 sur 12). L'assemblage complet d'un
-calcul de mur (maillage → charges → enveloppe → vérification de section)
-n'est pas encore orchestré bout en bout, et le solveur incrémental non
-linéaire (lot 7) n'est pas implémenté. Ne pas utiliser en l'état pour une
-justification de projet.
+Ce dépôt est en développement (lot 7 sur 12). L'assemblage complet d'un
+calcul de mur (maillage → charges → enveloppe → vérification de section
+→ solveur incrémental) n'est pas encore orchestré bout en bout depuis un
+objet `Projet` unique — chaque lot expose sa propre API, à assembler par
+l'appelant. Ne pas utiliser en l'état pour une justification de projet.

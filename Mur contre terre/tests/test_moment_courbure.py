@@ -6,6 +6,7 @@ from mur_contre_terre.section_ba.moment_courbure import (
     courbe_moment_courbure,
     courbure_ultime,
     rigidite_non_fissuree,
+    rigidite_secante,
 )
 
 
@@ -91,3 +92,28 @@ def test_courbe_moment_courbure_dernier_palier_est_la_courbure_ultime():
 def test_courbe_moment_courbure_nb_paliers_non_positif_leve_une_erreur():
     with pytest.raises(ValueError):
         courbe_moment_courbure(0.0, _section(), _materiaux(), _AS_TERRE, _AS_INTERIEUR, nb_paliers=0)
+
+
+def test_rigidite_secante_moment_nul_donne_la_rigidite_non_fissuree():
+    section, materiaux = _section(), _materiaux()
+    assert rigidite_secante(0.0, 0.0, section, materiaux, _AS_TERRE, _AS_INTERIEUR) == pytest.approx(
+        rigidite_non_fissuree(section, materiaux)
+    )
+
+
+def test_rigidite_secante_coherente_avec_la_courbe_directe():
+    # Le tout premier palier (juste après l'amorce de fissuration) est exclu : l'intégration
+    # par fibres y discrétise la coupure de traction du béton en petits paliers non strictement
+    # monotones (voir modele_beton.py), si bien que la bissection sur chi peut y converger sur
+    # une racine proche mais distincte de celle de courbe_moment_courbure. Les paliers suivants,
+    # eux, coïncident à la précision machine.
+    section, materiaux = _section(), _materiaux()
+    pts = courbe_moment_courbure(0.0, section, materiaux, _AS_TERRE, _AS_INTERIEUR, sens=1, nb_paliers=8)
+    for p in pts[1:]:
+        ei = rigidite_secante(p.m, 0.0, section, materiaux, _AS_TERRE, _AS_INTERIEUR)
+        assert ei == pytest.approx(p.ei_secant, rel=1e-6)
+
+
+def test_rigidite_secante_moment_hors_capacite_leve_une_erreur():
+    with pytest.raises(ValueError):
+        rigidite_secante(1.0e9, 0.0, _section(), _materiaux(), _AS_TERRE, _AS_INTERIEUR)

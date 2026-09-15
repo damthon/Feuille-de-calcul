@@ -139,7 +139,7 @@ def _composantes(
     z = np.linspace(0.0, h, N_FIBRES + 1)
     s = z if sens == 1 else h - z
     eps_beton = eps_cu * (s / x - 1.0)
-    sigma_beton = np.array([contrainte_beton(e, materiaux.beton, calcul) for e in eps_beton])
+    sigma_beton = contrainte_beton(eps_beton, materiaux.beton, calcul)
     fc = section.largeur * _trapezes(sigma_beton, z)
     mc = section.largeur * _trapezes(sigma_beton * (z - h / 2.0), z)
 

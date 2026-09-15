@@ -7,10 +7,16 @@ fissuré ne reprend aucune traction résiduelle (pas de tension stiffening).
 
 Convention de signe : déformation et contrainte positives en traction,
 cohérente avec N/M du reste du paquet (voir l'en-tête de
-``mecanique/solveur_lineaire.py``). Toutes les fonctions sont pures.
+``mecanique/solveur_lineaire.py``). Toutes les fonctions sont pures et
+vectorisées (``epsilon`` scalaire ou tableau numpy — l'intégration par
+fibres de ``flexion_composee.py``/``moment_courbure.py`` en dépend pour
+rester praticable dans les bissections imbriquées du solveur
+incrémental, lot 7).
 """
 
 from __future__ import annotations
+
+import numpy as np
 
 from mur_contre_terre.donnees.materiaux import Beton
 
@@ -29,8 +35,8 @@ def deformation_fissuration(beton: Beton) -> float:
     return beton.fctm / beton.Ecm
 
 
-def contrainte_beton(epsilon: float, beton: Beton, calcul: bool = True) -> float:
-    """σ(ε) [Pa], positif en traction.
+def contrainte_beton(epsilon, beton: Beton, calcul: bool = True):
+    """σ(ε) [Pa], positif en traction — ``epsilon`` scalaire ou tableau numpy.
 
     ``calcul=True`` (par défaut) utilise la résistance de calcul fcd =
     fck/γc (vérification ELU) ; ``calcul=False`` utilise fck directement
@@ -42,16 +48,19 @@ def contrainte_beton(epsilon: float, beton: Beton, calcul: bool = True) -> float
     d'équilibre (``flexion_composee.py``) ; la validité de l'état de
     déformation final est du ressort de l'appelant.
     """
-    if epsilon >= 0.0:
-        eps_fiss = deformation_fissuration(beton)
-        if epsilon >= eps_fiss:
-            return 0.0
-        return beton.Ecm * epsilon
+    scalaire = np.ndim(epsilon) == 0
+    eps_signe = np.asarray(epsilon, dtype=float)
 
-    eps = min(-epsilon, beton.epsilon_cu)  # compression positive pour la formule normative, tronquée à epsilon_cu
+    eps_fiss = deformation_fissuration(beton)
+    sigma_traction = np.where(eps_signe < eps_fiss, beton.Ecm * eps_signe, 0.0)
+
+    eps_compression = np.clip(-eps_signe, 0.0, beton.epsilon_cu)  # compression positive, tronquée à epsilon_cu
     resistance = fcd(beton) if calcul else beton.fck
-    if eps <= EPS_C2:
-        sigma = resistance * (1.0 - (1.0 - eps / EPS_C2) ** N_PARABOLE)
-    else:
-        sigma = resistance
-    return -sigma
+    sigma_compression = -np.where(
+        eps_compression <= EPS_C2,
+        resistance * (1.0 - (1.0 - eps_compression / EPS_C2) ** N_PARABOLE),
+        resistance,
+    )
+
+    sigma = np.where(eps_signe >= 0.0, sigma_traction, sigma_compression)
+    return float(sigma) if scalaire else sigma

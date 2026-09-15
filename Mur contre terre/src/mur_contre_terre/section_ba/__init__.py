@@ -17,6 +17,7 @@ from mur_contre_terre.section_ba.moment_courbure import (
     courbe_moment_courbure,
     courbure_ultime,
     rigidite_non_fissuree,
+    rigidite_secante,
 )
 
 __all__ = [
@@ -37,5 +38,6 @@ __all__ = [
     "fsd",
     "resistance_effort_tranchant",
     "rigidite_non_fissuree",
+    "rigidite_secante",
     "taux_armature_longitudinale",
 ]

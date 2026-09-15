@@ -171,7 +171,7 @@ hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
     <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
     <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
     <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
-    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 7.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 8.</span></div></div>
     <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
     <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
   </div>
@@ -601,6 +601,9 @@ class Projet:
     <li>Itération jusqu'à convergence (écart EI sous tolérance) ou divergence détectée (non-convergence après N itérations) — le dernier palier convergé est noté comme charge maximale atteinte.</li>
   </ol>
   <p>Sortie : courbe charge–déplacement (tête ou point maximal) en fonction du % de charge, comme demandé en §8 de votre prompt.</p>
+
+  <h4>Implémenté au lot 7</h4>
+  <p><code>nonlineaire/solveur_incremental.py</code> orchestre <code>mecanique/</code> et <code>section_ba/</code> (seul module du dépôt à le faire — les deux s'ignorent mutuellement) : à chaque palier, K est assemblée avec l'EI(x) courant de chaque élément (EA reste élastique, section brute — seul EI est mis à jour, conformément à ce paragraphe) ; les efforts internes du palier déterminent une nouvelle rigidité sécante via <code>section_ba.moment_courbure.rigidite_secante</code>, par relaxation (moyenne successive, pour la stabilité) jusqu'à convergence de l'écart relatif ou jusqu'au nombre maximal d'itérations. Une section qui dépasse sa résistance (M_Ed hors de la plage atteignable) arrête le chargement : le dernier palier convergé est retenu comme charge maximale atteinte. <code>moment_courbure.py</code> utilise les résistances caractéristiques (fck/fsk) plutôt que les résistances de calcul ELU (fcd/fsd) de <code>flexion_composee.py</code>, pour une réponse M-χ réaliste plutôt qu'une marge de sécurité — voir la note en tête de fichier sur la dissymétrie résiduelle de tangente initiale (≈ 9 % à très faible courbure) que cela laisse. Coût : les bissections imbriquées (pas de solveur analytique pour des matériaux non linéaires) restent lentes, de l'ordre de la minute pour 6 éléments × 20 paliers.</p>
   </div>
 </section>
 
@@ -644,7 +647,7 @@ class Projet:
       <tr><td class="num">4</td><td>Combinaisons SIA 260, charges nodales équivalentes, enveloppes — <strong>fait</strong></td></tr>
       <tr><td class="num">5</td><td>Lois de matériaux avancées, flexion composée, effort tranchant — <code>section_ba/</code> — <strong>fait</strong></td></tr>
       <tr><td class="num">6</td><td>Moment-courbure, EI sécant, encastrement élastique kθ — <strong>fait</strong></td></tr>
-      <tr><td class="num">7</td><td>Solveur incrémental non linéaire — <code>nonlineaire/</code></td></tr>
+      <tr><td class="num">7</td><td>Solveur incrémental non linéaire — <code>nonlineaire/</code> — <strong>fait</strong></td></tr>
       <tr><td class="num">8</td><td>Note de calcul, figures (trace.py)</td></tr>
       <tr><td class="num">9</td><td>Interface Tkinter, sauvegarde/chargement de projet</td></tr>
       <tr><td class="num">10</td><td>Export PDF / Excel</td></tr>
