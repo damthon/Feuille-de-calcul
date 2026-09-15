@@ -7,9 +7,11 @@ couche d'orchestration en aval, cohérent avec le flux de calcul §5 du
 plan de conception.
 
 La charge (vecteur de forces nodales à 100 %) est appliquée par paliers
-de ``1/nb_paliers``. À chaque palier : le maillage est résolu
-élastiquement (rigidité axiale EA constante, section brute — seule EI
-est mise à jour, comme le prescrit §9 du plan) ; pour chaque élément,
+successifs (``fractions_charge`` — même liste que ``donnees.Projet.pas_de_charge``,
+lot 1 : « 1 %, …, 100 %, pas paramétrable » du plan de conception). À
+chaque palier : le maillage est résolu élastiquement (rigidité axiale EA
+constante, section brute — seule EI est mise à jour, comme le prescrit
+§9 du plan) ; pour chaque élément,
 les efforts internes (N, M — moyenne des deux extrémités pour M, qui y
 varie linéairement) déterminent une nouvelle rigidité sécante EI via
 ``section_ba.moment_courbure.rigidite_secante`` ; on itère (relaxation
@@ -52,8 +54,12 @@ class PalierIncremental:
 @dataclass(frozen=True)
 class ResultatIncremental:
     paliers: tuple[PalierIncremental, ...]  # paliers convergés, charge croissante
-    convergence_totale: bool  # True si tous les paliers demandés (jusqu'à 100 %) ont convergé
+    convergence_totale: bool  # True si tous les paliers demandés ont convergé
     fraction_charge_maximale: float  # dernier palier convergé (0.0 si aucun)
+
+
+def _fractions_charge_defaut() -> tuple[float, ...]:
+    return tuple(i / 20 for i in range(1, 21))  # 5 %, 10 %, …, 100 % — même défaut que Projet.pas_de_charge
 
 
 def _sections(geometrie: Geometrie, materiaux: Materiaux, maillage: Maillage) -> tuple[SectionRectangulaire, ...]:
@@ -98,7 +104,7 @@ def resoudre_incremental(
     forces_nodales: np.ndarray,
     armature_terre: Sequence[float] | float,
     armature_interieur: Sequence[float] | float,
-    nb_paliers: int = 20,
+    fractions_charge: Sequence[float] = (),
     tolerance: float = 1e-3,
     max_iterations: int = 30,
 ) -> ResultatIncremental:
@@ -108,10 +114,13 @@ def resoudre_incremental(
     par élément (scalaire si constante sur toute la hauteur, ou une
     valeur par élément du maillage). L'armature elle-même n'est pas
     dimensionnée ici — c'est ``section_ba.flexion_composee`` qui le
-    fait, à un stade antérieur du calcul.
+    fait, à un stade antérieur du calcul. ``fractions_charge`` (défaut :
+    5 %, 10 %, …, 100 %) n'a pas besoin d'être uniforme ni triée — elle
+    est parcourue dans l'ordre donné, comme ``Projet.pas_de_charge``.
     """
-    if nb_paliers < 1:
-        raise ValueError(f"nb_paliers doit être strictement positif (reçu {nb_paliers})")
+    fractions_charge = tuple(fractions_charge) or _fractions_charge_defaut()
+    if any(not 0.0 < f <= 1.0 for f in fractions_charge):
+        raise ValueError("fractions_charge doit contenir des fractions dans ]0, 1]")
     if not 0.0 < tolerance < 1.0:
         raise ValueError(f"tolerance doit être dans ]0, 1[ (reçu {tolerance})")
     if max_iterations < 1:
@@ -131,8 +140,7 @@ def resoudre_incremental(
     ei_convergee = list(ei_non_fissure)
     paliers: list[PalierIncremental] = []
 
-    for p in range(1, nb_paliers + 1):
-        fraction = p / nb_paliers
+    for fraction in fractions_charge:
         f_palier = fraction * forces_nodales
         ei_iter = list(ei_convergee)
 
@@ -170,6 +178,6 @@ def resoudre_incremental(
         paliers.append(PalierIncremental(fraction, resultat, tuple(ei_iter), iterations_faites))
         ei_convergee = ei_iter
 
-    convergence_totale = len(paliers) == nb_paliers
+    convergence_totale = len(paliers) == len(fractions_charge)
     fraction_max = paliers[-1].fraction_charge if paliers else 0.0
     return ResultatIncremental(tuple(paliers), convergence_totale, fraction_max)

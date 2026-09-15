@@ -171,7 +171,7 @@ hr.end{border:none;border-top:2px solid var(--ink);margin:3.5rem 0 1.2rem}
     <div class="step"><span class="sn">1</span><div><b>Analyse du dépôt de référence</b><span>Nommogramme — fait, résumé en §2.</span></div></div>
     <div class="step"><span class="sn">2</span><div><b>Plan du code</b><span>ce document, §3 à §5 — validé.</span></div></div>
     <div class="step"><span class="sn">3</span><div><b>Schémas du modèle</b><span>ce document, §6 à §8 — validé.</span></div></div>
-    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 8.</span></div></div>
+    <div class="step now"><span class="sn">4</span><div><b>Développement module par module</b><span>en cours — lot 9.</span></div></div>
     <div class="step"><span class="sn">5</span><div><b>Validation face à vos feuilles Excel</b><span>sur vos cas de référence.</span></div></div>
     <div class="step"><span class="sn">6</span><div><b>Dépôt GitHub et exécutable</b><span>packaging PyInstaller, comme Nommogramme.</span></div></div>
   </div>
@@ -363,6 +363,9 @@ class Projet:
    Résultats (§10 de votre prompt) + note de calcul + export</pre>
 
   <p>La combinaison la plus défavorable pour chaque effort (N, V, M) et chaque section est retenue pour le dimensionnement de l'armature ; toutes les combinaisons restent accessibles pour inspection.</p>
+
+  <h4>Orchestration bout en bout — implémentée au lot 8</h4>
+  <p><code>calcul.py</code> (racine du paquet) assemble ce flux : maillage → charges nodales par cas → combinaisons ELU/ELS → résolution linéaire par combinaison → armature nécessaire et effort tranchant par élément, enveloppe des combinaisons ELU (<code>calculer(projet) -&gt; ResultatCalcul</code>). C'est la première couche du dépôt qui connaît à la fois <code>mecanique/</code> et <code>section_ba/</code> — le rôle attendu d'une orchestration en aval. La convention de signe M_Ed → face tendue (mecanique vs section_ba) a été vérifiée physiquement sur le cas de la poussée des terres seule (voir l'en-tête de <code>calcul.py</code>) : aucune conversion n'est nécessaire entre les deux modules. <code>rapport.py</code> met en forme le résultat en note de calcul Markdown, traçable (chaque grandeur cite sa clause SIA) ; <code>trace.py</code> (extra <code>[trace]</code>) fournit les figures.</p>
   </div>
 </section>
 
@@ -648,7 +651,7 @@ class Projet:
       <tr><td class="num">5</td><td>Lois de matériaux avancées, flexion composée, effort tranchant — <code>section_ba/</code> — <strong>fait</strong></td></tr>
       <tr><td class="num">6</td><td>Moment-courbure, EI sécant, encastrement élastique kθ — <strong>fait</strong></td></tr>
       <tr><td class="num">7</td><td>Solveur incrémental non linéaire — <code>nonlineaire/</code> — <strong>fait</strong></td></tr>
-      <tr><td class="num">8</td><td>Note de calcul, figures (trace.py)</td></tr>
+      <tr><td class="num">8</td><td>Note de calcul, figures (trace.py) — <strong>fait</strong></td></tr>
       <tr><td class="num">9</td><td>Interface Tkinter, sauvegarde/chargement de projet</td></tr>
       <tr><td class="num">10</td><td>Export PDF / Excel</td></tr>
       <tr><td class="num">11</td><td>Empaquetage exécutable Windows, CI, README</td></tr>

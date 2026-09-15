@@ -17,6 +17,9 @@ _MATERIAUX = Materiaux(
     beton=Beton.depuis_classe("C30/37"), acier=Acier.b500b(), enrobage_terre=0.04, enrobage_interieur=0.04
 )
 _APPUIS = ConditionsAppui(pied=TypeAppuiPied.ENCASTREMENT, tete=TypeAppuiTete.LIBRE)
+_QUATRE_PALIERS = (0.25, 0.5, 0.75, 1.0)
+_DEUX_PALIERS = (0.5, 1.0)
+_DIX_PALIERS = tuple(i / 10 for i in range(1, 11))
 
 
 def _maillage() -> Maillage:
@@ -42,12 +45,23 @@ def test_armature_de_mauvaise_taille_leve_une_erreur():
         resoudre_incremental(m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, (6e-4, 6e-4, 6e-4), 6e-4)
 
 
-@pytest.mark.parametrize("kwargs", [{"nb_paliers": 0}, {"tolerance": 0.0}, {"tolerance": 1.5}, {"max_iterations": 0}])
+@pytest.mark.parametrize(
+    "kwargs", [{"fractions_charge": (0.0,)}, {"fractions_charge": (1.5,)}, {"tolerance": 0.0}, {"tolerance": 1.5}, {"max_iterations": 0}]
+)
 def test_parametres_invalides_levent_une_erreur(kwargs):
     m = _maillage()
     F = _forces(m, 1.0e3)
     with pytest.raises(ValueError):
         resoudre_incremental(m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, 6e-4, 6e-4, **kwargs)
+
+
+def test_fractions_charge_par_defaut_va_jusqu_a_cent_pour_cent():
+    m = _maillage()
+    F = _forces(m, 1.0e3)
+    resultat = resoudre_incremental(m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, 6e-4, 6e-4)
+    assert resultat.convergence_totale
+    assert len(resultat.paliers) == 20
+    assert resultat.paliers[-1].fraction_charge == pytest.approx(1.0)
 
 
 def test_petite_charge_convergence_totale_et_coherente_avec_le_solveur_lineaire():
@@ -56,7 +70,8 @@ def test_petite_charge_convergence_totale_et_coherente_avec_le_solveur_lineaire(
     F = _forces(m, charge_totale)
 
     resultat = resoudre_incremental(
-        m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, armature_terre=6e-4, armature_interieur=6e-4, nb_paliers=4
+        m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F,
+        armature_terre=6e-4, armature_interieur=6e-4, fractions_charge=_QUATRE_PALIERS,
     )
 
     assert resultat.convergence_totale
@@ -79,7 +94,8 @@ def test_ei_decroit_avec_la_fissuration():
     F = _forces(m, 60.0e3)  # charge assez forte pour fissurer nettement
 
     resultat = resoudre_incremental(
-        m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, armature_terre=8e-4, armature_interieur=8e-4, nb_paliers=4
+        m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F,
+        armature_terre=8e-4, armature_interieur=8e-4, fractions_charge=_QUATRE_PALIERS,
     )
 
     ei_premier = resultat.paliers[0].ei[0]
@@ -91,9 +107,9 @@ def test_armature_scalaire_equivaut_a_un_tableau_constant():
     m = _maillage()
     F = _forces(m, 5.0e3)
 
-    r_scalaire = resoudre_incremental(m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, 6e-4, 6e-4, nb_paliers=2)
+    r_scalaire = resoudre_incremental(m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, 6e-4, 6e-4, fractions_charge=_DEUX_PALIERS)
     r_tableau = resoudre_incremental(
-        m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, (6e-4, 6e-4), (6e-4, 6e-4), nb_paliers=2
+        m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, (6e-4, 6e-4), (6e-4, 6e-4), fractions_charge=_DEUX_PALIERS
     )
 
     u_scalaire = r_scalaire.paliers[-1].resultat.deplacements[-1, 1]
@@ -106,7 +122,8 @@ def test_armature_insuffisante_arrete_avant_pleine_charge():
     F = _forces(m, 200.0e3)  # charge très forte pour une armature minimale
 
     resultat = resoudre_incremental(
-        m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F, armature_terre=1e-5, armature_interieur=1e-5, nb_paliers=10
+        m, _GEOMETRIE, _MATERIAUX, _APPUIS, _SOL, F,
+        armature_terre=1e-5, armature_interieur=1e-5, fractions_charge=_DIX_PALIERS,
     )
 
     assert not resultat.convergence_totale

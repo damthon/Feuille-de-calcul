@@ -31,7 +31,7 @@ d'origine.
 | 5 | Lois de matériaux avancées, flexion composée, effort tranchant | fait |
 | 6 | Moment-courbure, EI sécant, encastrement élastique kθ | fait |
 | 7 | Solveur incrémental non linéaire | fait |
-| 8 | Note de calcul, figures | à venir |
+| 8 | Note de calcul, figures | fait |
 | 9 | Interface de bureau, sauvegarde/chargement de projet | à venir |
 | 10 | Export PDF / Excel | à venir |
 | 11 | Empaquetage exécutable Windows, CI | à venir |
@@ -269,10 +269,33 @@ Un profil plus fin (nb_paliers, max_iterations) ou une meilleure
 stratégie d'accélération pourront être revus ultérieurement si
 nécessaire.
 
+## Utilisation — calcul complet et note de calcul (lot 8)
+
+```python
+from mur_contre_terre.calcul import calculer
+from mur_contre_terre.rapport import generer_note_calcul
+
+resultat = calculer(projet)          # maillage → charges → combinaisons ELU/ELS → vérification de section
+resultat.verifications               # une VerificationSection par élément : armature + effort tranchant
+md = generer_note_calcul(projet, resultat)
+open("note_de_calcul.md", "w").write(md)
+```
+
+`calcul.py` est la première couche du dépôt à connaître à la fois
+`mecanique/` et `section_ba/` — c'est l'orchestration bout en bout
+(maillage, charges nodales par cas, combinaisons SIA 260, résolution
+linéaire par combinaison, puis armature nécessaire et effort tranchant
+par élément, enveloppe des combinaisons ELU). Elle ne couvre pas encore
+la non-linéarité matérielle (`nonlineaire.resoudre_incremental`, à
+appeler séparément) ni l'export PDF/Excel (lot 10).
+
+`trace.py` (extra `[trace]`, matplotlib) fournit les figures —
+géométrie, diagrammes N/V/M, moment-courbure, déformée — chacune
+retournée comme `matplotlib.figure.Figure` à enregistrer ou intégrer
+par l'appelant.
+
 ## Avertissement
 
-Ce dépôt est en développement (lot 7 sur 12). L'assemblage complet d'un
-calcul de mur (maillage → charges → enveloppe → vérification de section
-→ solveur incrémental) n'est pas encore orchestré bout en bout depuis un
-objet `Projet` unique — chaque lot expose sa propre API, à assembler par
-l'appelant. Ne pas utiliser en l'état pour une justification de projet.
+Ce dépôt est en développement (lot 8 sur 12). L'interface de bureau
+(lot 9) et l'export PDF/Excel (lot 10) ne sont pas encore implémentés.
+Ne pas utiliser en l'état pour une justification de projet.
