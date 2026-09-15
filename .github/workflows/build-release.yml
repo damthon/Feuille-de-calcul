@@ -4,7 +4,12 @@ on:
   push:
     tags:
       - "mur-contre-terre-v*"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version à publier (ex. v0.1.0) — utilisée pour nommer la release en déclenchement manuel"
+        required: true
+        default: "v0.1.0"
 
 permissions:
   contents: write
@@ -46,12 +51,22 @@ jobs:
           name: MurContreTerre-windows
           path: "Mur contre terre/dist/MurContreTerre-windows.zip"
 
+      - name: Déterminer le nom de la release
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=mur-contre-terre-${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/mur-contre-terre-v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
-          gh release create "${{ github.ref_name }}"
+          gh release create "${{ steps.version.outputs.tag }}"
           "dist/MurContreTerre-windows.zip"
-          --title "Mur contre-terre ${{ github.ref_name }}"
+          --title "Mur contre-terre ${{ steps.version.outputs.tag }}"
           --generate-notes
+          --target ${{ github.sha }}
