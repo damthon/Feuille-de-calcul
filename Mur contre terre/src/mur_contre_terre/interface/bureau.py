@@ -6,19 +6,33 @@ de champs, traduits vers les dataclasses de calcul par
 charpente qu'annoncée au plan de conception (§10), sur le modèle de
 Nommogramme. Sauvegarde/chargement réutilise directement
 ``donnees.Projet.sauvegarder``/``charger`` (JSON, lot 1).
+
+Chaque onglet de saisie (Géométrie, Sol, Appuis, Matériaux, Charges)
+affiche à droite du formulaire un aperçu graphique à l'échelle
+(``trace.figure_geometrie``/``figure_section_materiaux``/``figure_charges``,
+extra ``[bureau]``, matplotlib) qui se redessine automatiquement — avec un
+léger différé (``_debounce``) — à chaque modification d'un champ, pour que
+l'utilisateur voie tout de suite l'effet de sa saisie plutôt qu'après coup.
 """
 
 from __future__ import annotations
 
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from typing import Callable
 
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+
+from mur_contre_terre import trace
 from mur_contre_terre.calcul import ResultatCalcul, calculer
-from mur_contre_terre.donnees.appuis import TypeAppuiPied, TypeAppuiTete
+from mur_contre_terre.donnees.appuis import ConditionsAppui, TypeAppuiPied, TypeAppuiTete
 from mur_contre_terre.donnees.charges import CasDeCharge, TypeCharge
-from mur_contre_terre.donnees.materiaux import Beton
+from mur_contre_terre.donnees.geometrie import Geometrie
+from mur_contre_terre.donnees.materiaux import Beton, Materiaux
 from mur_contre_terre.donnees.projet import Projet
-from mur_contre_terre.donnees.sol import TypePoussee
+from mur_contre_terre.donnees.sol import Sol, TypePoussee
 from mur_contre_terre.interface import infobulle, saisie
 from mur_contre_terre.rapport import generer_note_calcul
 from mur_contre_terre.unites import en_deg, en_kN, en_kN_m2, en_kN_m3, en_MPa
@@ -29,17 +43,25 @@ _CLASSES_BETON = ("C20/25", "C25/30", "C30/37", "C35/45", "C40/50")
 _TYPES_CHARGE = tuple(t.value for t in TypeCharge)
 _CATEGORIES = ("G", "Q", "A")
 
+# Géométrie de repli pour l'aperçu de l'onglet Charges tant que l'onglet Géométrie n'a pas
+# (encore) de saisie valide — mêmes valeurs que les champs par défaut de cet onglet.
+_GEOMETRIE_PAR_DEFAUT = Geometrie(hauteur=3.0, ep_base=0.30, ep_couronnement=0.20, debord_semelle=0.80, ep_semelle=0.40)
+
+_DELAI_REDESSIN_MS = 250
+
 
 class Application(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(TITRE)
-        self.geometry("920x680")
+        self.geometry("1280x760")
 
         self.chemin_projet: str | None = None
         self.charges: list[CasDeCharge] = []
+        self.indice_charge_en_edition: int | None = None
         self.resultat: ResultatCalcul | None = None
         self.projet_courant: Projet | None = None
+        self._apres_ids: dict[str, str] = {}
 
         self.vars_geometrie: dict[str, tk.StringVar] = {}
         self.vars_sol: dict[str, tk.StringVar] = {}
@@ -50,6 +72,11 @@ class Application(tk.Tk):
 
         self._construire_menu()
         self._construire_onglets()
+
+        # premier tracé des aperçus avec les valeurs par défaut des champs
+        self._maj_apercus_mur()
+        self._maj_apercu_materiaux()
+        self._maj_apercu_charges()
 
     # ------------------------------------------------------------------ menu
 
@@ -101,80 +128,129 @@ class Application(tk.Tk):
             infobulle.attacher(entree, aide)
         return entree
 
+    def _construire_apercu(self, parent: tk.Widget, largeur: float = 4.3, hauteur: float = 5.3) -> FigureCanvasTkAgg:
+        """Panneau d'aperçu graphique (matplotlib intégré) à droite d'un formulaire d'onglet."""
+        cadre = tk.Frame(parent, relief="groove", borderwidth=1)
+        cadre.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=4)
+        canvas = FigureCanvasTkAgg(Figure(figsize=(largeur, hauteur)), master=cadre)
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+        canvas.draw()
+        return canvas
+
     def _onglet_geometrie(self, notebook: ttk.Notebook) -> tk.Widget:
         cadre = tk.Frame(notebook)
-        self._champ(cadre, 0, "Hauteur H [m]", self.vars_geometrie, "hauteur", "3.0")
-        self._champ(cadre, 1, "Épaisseur en pied [m]", self.vars_geometrie, "ep_base", "0.30")
-        self._champ(cadre, 2, "Épaisseur en tête [m]", self.vars_geometrie, "ep_couronnement", "0.20")
-        self._champ(cadre, 3, "Débord de semelle [m]", self.vars_geometrie, "debord_semelle", "0.80")
-        self._champ(cadre, 4, "Épaisseur de semelle [m]", self.vars_geometrie, "ep_semelle", "0.40")
+        formulaire = tk.Frame(cadre)
+        formulaire.pack(side="left", fill="y", padx=(0, 4), pady=4)
+
+        self._champ(formulaire, 0, "Hauteur H [m]", self.vars_geometrie, "hauteur", "3.0")
+        self._champ(formulaire, 1, "Épaisseur en pied [m]", self.vars_geometrie, "ep_base", "0.30")
+        self._champ(formulaire, 2, "Épaisseur en tête [m]", self.vars_geometrie, "ep_couronnement", "0.20")
+        self._champ(formulaire, 3, "Débord de semelle [m]", self.vars_geometrie, "debord_semelle", "0.80")
+        self._champ(formulaire, 4, "Épaisseur de semelle [m]", self.vars_geometrie, "ep_semelle", "0.40")
+
+        self.canvas_geometrie = self._construire_apercu(cadre)
+        for var in self.vars_geometrie.values():
+            var.trace_add("write", self._on_champ_change_mur)
+            var.trace_add("write", self._on_champ_change_materiaux)
+            var.trace_add("write", self._on_champ_change_charges)
         return cadre
 
     def _onglet_sol(self, notebook: ttk.Notebook) -> tk.Widget:
         cadre = tk.Frame(notebook)
-        self._champ(cadre, 0, "Poids volumique γ [kN/m³]", self.vars_sol, "gamma", "18")
-        self._champ(cadre, 1, "Angle de frottement φ′ [°]", self.vars_sol, "phi", "30")
-        self._champ(cadre, 2, "Cohésion c′ [kN/m²]", self.vars_sol, "c", "0")
-        self._champ(cadre, 3, "Inclinaison du terrain β [°]", self.vars_sol, "beta", "0", infobulle.TEXTES["beta"])
-        self._champ(cadre, 4, "Frottement mur-sol δ [°] (vide = auto)", self.vars_sol, "delta", "", infobulle.TEXTES["delta"])
+        formulaire = tk.Frame(cadre)
+        formulaire.pack(side="left", fill="y", padx=(0, 4), pady=4)
 
-        tk.Label(cadre, text="Type de poussée").grid(row=5, column=0, sticky="w", padx=4, pady=3)
+        self._champ(formulaire, 0, "Poids volumique γ [kN/m³]", self.vars_sol, "gamma", "18")
+        self._champ(formulaire, 1, "Angle de frottement φ′ [°]", self.vars_sol, "phi", "30")
+        self._champ(formulaire, 2, "Cohésion c′ [kN/m²]", self.vars_sol, "c", "0")
+        self._champ(formulaire, 3, "Inclinaison du terrain β [°]", self.vars_sol, "beta", "0", infobulle.TEXTES["beta"])
+        self._champ(formulaire, 4, "Frottement mur-sol δ [°] (vide = auto)", self.vars_sol, "delta", "", infobulle.TEXTES["delta"])
+
+        tk.Label(formulaire, text="Type de poussée").grid(row=5, column=0, sticky="w", padx=4, pady=3)
         self.vars_sol["type_poussee"] = tk.StringVar(value="actif")
         ttk.Combobox(
-            cadre, textvariable=self.vars_sol["type_poussee"], values=("actif", "au_repos"), state="readonly", width=12
+            formulaire, textvariable=self.vars_sol["type_poussee"], values=("actif", "au_repos"), state="readonly", width=12
         ).grid(row=5, column=1, sticky="w", padx=4, pady=3)
 
         self._champ(
-            cadre, 6, "Niveau de nappe [m, depuis le pied]", self.vars_sol, "niveau_nappe", "",
+            formulaire, 6, "Niveau de nappe [m, depuis le pied]", self.vars_sol, "niveau_nappe", "",
             infobulle.TEXTES["niveau_nappe"],
         )
-        self._champ(cadre, 7, "Poids volumique saturé γsat [kN/m³]", self.vars_sol, "gamma_sat", "")
+        self._champ(formulaire, 7, "Poids volumique saturé γsat [kN/m³]", self.vars_sol, "gamma_sat", "")
         self._champ(
-            cadre, 8, "Facteur de réduction (écoulement)", self.vars_sol, "facteur_reduction_ecoulement", "1.0",
+            formulaire, 8, "Facteur de réduction (écoulement)", self.vars_sol, "facteur_reduction_ecoulement", "1.0",
             infobulle.TEXTES["facteur_reduction_ecoulement"],
         )
-        self._champ(cadre, 9, "Module de réaction ks [MN/m³]", self.vars_sol, "ks", "", infobulle.TEXTES["ks"])
+        self._champ(formulaire, 9, "Module de réaction ks [MN/m³]", self.vars_sol, "ks", "", infobulle.TEXTES["ks"])
+
+        self.canvas_sol = self._construire_apercu(cadre)
+        for var in self.vars_sol.values():
+            var.trace_add("write", self._on_champ_change_mur)
+            var.trace_add("write", self._on_champ_change_charges)
         return cadre
 
     def _onglet_appuis(self, notebook: ttk.Notebook) -> tk.Widget:
         cadre = tk.Frame(notebook)
-        tk.Label(cadre, text="Pied").grid(row=0, column=0, sticky="w", padx=4, pady=3)
+        formulaire = tk.Frame(cadre)
+        formulaire.pack(side="left", fill="y", padx=(0, 4), pady=4)
+
+        tk.Label(formulaire, text="Pied").grid(row=0, column=0, sticky="w", padx=4, pady=3)
         self.vars_appuis["pied"] = tk.StringVar(value="encastrement")
         ttk.Combobox(
-            cadre, textvariable=self.vars_appuis["pied"], values=("encastrement", "ressort"), state="readonly", width=14
+            formulaire, textvariable=self.vars_appuis["pied"], values=("encastrement", "ressort"), state="readonly", width=14
         ).grid(row=0, column=1, sticky="w", padx=4, pady=3)
 
-        self._champ(cadre, 1, "kθ [MN·m/rad] (vide = auto depuis ks)", self.vars_appuis, "k_theta", "", infobulle.TEXTES["k_theta"])
+        self._champ(formulaire, 1, "kθ [MN·m/rad] (vide = auto depuis ks)", self.vars_appuis, "k_theta", "", infobulle.TEXTES["k_theta"])
 
-        tk.Label(cadre, text="Tête").grid(row=2, column=0, sticky="w", padx=4, pady=3)
+        tk.Label(formulaire, text="Tête").grid(row=2, column=0, sticky="w", padx=4, pady=3)
         self.vars_appuis["tete"] = tk.StringVar(value="libre")
         ttk.Combobox(
-            cadre, textvariable=self.vars_appuis["tete"], values=("libre", "appui_dalle"), state="readonly", width=14
+            formulaire, textvariable=self.vars_appuis["tete"], values=("libre", "appui_dalle"), state="readonly", width=14
         ).grid(row=2, column=1, sticky="w", padx=4, pady=3)
+
+        self.canvas_appuis = self._construire_apercu(cadre)
+        for var in self.vars_appuis.values():
+            var.trace_add("write", self._on_champ_change_mur)
         return cadre
 
     def _onglet_materiaux(self, notebook: ttk.Notebook) -> tk.Widget:
         cadre = tk.Frame(notebook)
-        tk.Label(cadre, text="Classe de béton").grid(row=0, column=0, sticky="w", padx=4, pady=3)
+        formulaire = tk.Frame(cadre)
+        formulaire.pack(side="left", fill="y", padx=(0, 4), pady=4)
+
+        tk.Label(formulaire, text="Classe de béton").grid(row=0, column=0, sticky="w", padx=4, pady=3)
         self.vars_materiaux["classe_beton"] = tk.StringVar(value="C30/37")
         ttk.Combobox(
-            cadre, textvariable=self.vars_materiaux["classe_beton"], values=_CLASSES_BETON, state="readonly", width=12
+            formulaire, textvariable=self.vars_materiaux["classe_beton"], values=_CLASSES_BETON, state="readonly", width=12
         ).grid(row=0, column=1, sticky="w", padx=4, pady=3)
-        tk.Label(cadre, text="Acier B500B (fixe)").grid(row=1, column=0, sticky="w", padx=4, pady=3)
-        self._champ(cadre, 2, "Enrobage côté terre [mm]", self.vars_materiaux, "enrobage_terre", "50")
-        self._champ(cadre, 3, "Enrobage côté intérieur [mm]", self.vars_materiaux, "enrobage_interieur", "40")
+        tk.Label(formulaire, text="Acier B500B (fixe)").grid(row=1, column=0, sticky="w", padx=4, pady=3)
+        self._champ(formulaire, 2, "Enrobage côté terre [mm]", self.vars_materiaux, "enrobage_terre", "50")
+        self._champ(formulaire, 3, "Enrobage côté intérieur [mm]", self.vars_materiaux, "enrobage_interieur", "40")
+
+        self.canvas_materiaux = self._construire_apercu(cadre)
+        for var in self.vars_materiaux.values():
+            var.trace_add("write", self._on_champ_change_materiaux)
         return cadre
 
     def _onglet_charges(self, notebook: ttk.Notebook) -> tk.Widget:
         cadre = tk.Frame(notebook)
+        gauche = tk.Frame(cadre)
+        gauche.pack(side="left", fill="y", padx=(0, 4), pady=4)
 
-        self.liste_charges = tk.Listbox(cadre, height=8, width=70)
+        self.liste_charges = tk.Listbox(gauche, height=8, width=46)
         self.liste_charges.grid(row=0, column=0, columnspan=2, padx=4, pady=4, sticky="we")
-        tk.Button(cadre, text="Supprimer la charge sélectionnée", command=self._supprimer_charge).grid(
-            row=1, column=0, columnspan=2, pady=(0, 8)
+        self.liste_charges.bind("<Double-Button-1>", lambda _evenement: self._modifier_charge())
+
+        boutons_liste = tk.Frame(gauche)
+        boutons_liste.grid(row=1, column=0, columnspan=2, pady=(0, 8))
+        tk.Button(boutons_liste, text="Modifier la charge sélectionnée", command=self._modifier_charge).pack(
+            side="left", padx=2
+        )
+        tk.Button(boutons_liste, text="Supprimer la charge sélectionnée", command=self._supprimer_charge).pack(
+            side="left", padx=2
         )
 
-        formulaire = tk.LabelFrame(cadre, text="Nouvelle charge")
+        formulaire = tk.LabelFrame(gauche, text="Nouvelle charge")
         formulaire.grid(row=2, column=0, columnspan=2, sticky="we", padx=4)
 
         self._champ(formulaire, 0, "Nom", self.vars_charge, "nom", "")
@@ -197,9 +273,18 @@ class Application(tk.Tk):
         self._champ(formulaire, 9, "Étendue [m]", self.vars_charge, "etendue", "")
         self._champ(formulaire, 10, "Profondeur d'application [m]", self.vars_charge, "profondeur_application", "")
 
-        tk.Button(formulaire, text="Ajouter la charge", command=self._ajouter_charge).grid(
-            row=11, column=0, columnspan=2, pady=6
+        boutons_formulaire = tk.Frame(formulaire)
+        boutons_formulaire.grid(row=11, column=0, columnspan=2, pady=6)
+        self.bouton_charge = tk.Button(boutons_formulaire, text="Ajouter la charge", command=self._ajouter_charge)
+        self.bouton_charge.pack(side="left", padx=2)
+        self.bouton_annuler_edition = tk.Button(
+            boutons_formulaire, text="Annuler la modification", command=self._annuler_edition_charge
         )
+        # masqué tant qu'on n'édite pas une charge existante (voir _modifier_charge)
+
+        self.canvas_charges = self._construire_apercu(cadre)
+        for var in self.vars_charge.values():
+            var.trace_add("write", self._on_champ_change_charges)
         return cadre
 
     def _onglet_resultats(self, notebook: ttk.Notebook) -> tk.Widget:
@@ -225,7 +310,95 @@ class Application(tk.Tk):
         self.tableau_resultats.pack(fill="both", expand=True, padx=4, pady=4)
         return cadre
 
+    # ------------------------------------------------------------ aperçus graphiques
+
+    def _construire_geometrie_ou_none(self) -> Geometrie | None:
+        try:
+            return saisie.geometrie_depuis_champs({c: v.get() for c, v in self.vars_geometrie.items()})
+        except ValueError:
+            return None
+
+    def _construire_sol_ou_none(self) -> Sol | None:
+        try:
+            return saisie.sol_depuis_champs({c: v.get() for c, v in self.vars_sol.items()})
+        except ValueError:
+            return None
+
+    def _construire_appuis_ou_none(self) -> ConditionsAppui | None:
+        try:
+            return saisie.appuis_depuis_champs({c: v.get() for c, v in self.vars_appuis.items()})
+        except ValueError:
+            return None
+
+    def _construire_materiaux_ou_none(self) -> Materiaux | None:
+        try:
+            return saisie.materiaux_depuis_champs({c: v.get() for c, v in self.vars_materiaux.items()})
+        except ValueError:
+            return None
+
+    def _dessiner(self, canvas: FigureCanvasTkAgg, construire_figure: Callable[[], Figure]) -> None:
+        """Remplace la figure d'un aperçu par une nouvelle, en libérant l'ancienne. Silencieux si la
+        saisie en cours ne permet pas encore de construire un projet valide (champ vide, non numérique…)."""
+        try:
+            nouvelle_figure = construire_figure()
+        except Exception:
+            return
+        ancienne_figure = canvas.figure
+        canvas.figure = nouvelle_figure
+        canvas.draw_idle()
+        if ancienne_figure is not nouvelle_figure:
+            plt.close(ancienne_figure)
+
+    def _maj_apercus_mur(self) -> None:
+        """Aperçu commun aux onglets Géométrie/Sol/Appuis : coupe du mur, massif de terre/nappe, appuis."""
+        geometrie = self._construire_geometrie_ou_none()
+        if geometrie is None:
+            return
+        sol = self._construire_sol_ou_none()
+        appuis = self._construire_appuis_ou_none()
+        for canvas in (self.canvas_geometrie, self.canvas_sol, self.canvas_appuis):
+            self._dessiner(canvas, lambda g=geometrie, s=sol, a=appuis: trace.figure_geometrie(g, s, a))
+
+    def _maj_apercu_materiaux(self) -> None:
+        geometrie = self._construire_geometrie_ou_none()
+        materiaux = self._construire_materiaux_ou_none()
+        if geometrie is None or materiaux is None:
+            return
+        self._dessiner(self.canvas_materiaux, lambda g=geometrie, m=materiaux: trace.figure_section_materiaux(g, m))
+
+    def _maj_apercu_charges(self) -> None:
+        geometrie = self._construire_geometrie_ou_none() or _GEOMETRIE_PAR_DEFAUT
+        sol = self._construire_sol_ou_none()
+        try:
+            previsualisation = saisie.charge_depuis_champs({c: v.get() for c, v in self.vars_charge.items()})
+        except ValueError:
+            previsualisation = None
+        charges = list(self.charges)
+        self._dessiner(
+            self.canvas_charges,
+            lambda g=geometrie, s=sol, ch=charges, p=previsualisation: trace.figure_charges(g, s, ch, p),
+        )
+
+    def _debounce(self, cle: str, fonction: Callable[[], None]) -> None:
+        """Retarde ``fonction`` de ``_DELAI_REDESSIN_MS`` : évite de redessiner à chaque frappe clavier."""
+        identifiant = self._apres_ids.pop(cle, None)
+        if identifiant is not None:
+            self.after_cancel(identifiant)
+        self._apres_ids[cle] = self.after(_DELAI_REDESSIN_MS, fonction)
+
+    def _on_champ_change_mur(self, *_args: object) -> None:
+        self._debounce("mur", self._maj_apercus_mur)
+
+    def _on_champ_change_materiaux(self, *_args: object) -> None:
+        self._debounce("materiaux", self._maj_apercu_materiaux)
+
+    def _on_champ_change_charges(self, *_args: object) -> None:
+        self._debounce("charges", self._maj_apercu_charges)
+
     # ----------------------------------------------------------------- actions
+
+    def _resume_charge(self, charge: CasDeCharge) -> str:
+        return f"{charge.nom} ({charge.type.value}, {charge.categorie.value})"
 
     def _ajouter_charge(self) -> None:
         try:
@@ -233,8 +406,33 @@ class Application(tk.Tk):
         except ValueError as erreur:
             messagebox.showerror("Charge invalide", str(erreur))
             return
-        self.charges.append(charge)
-        self.liste_charges.insert("end", f"{charge.nom} ({charge.type.value}, {charge.categorie.value})")
+        if self.indice_charge_en_edition is not None:
+            indice = self.indice_charge_en_edition
+            self.charges[indice] = charge
+            self.liste_charges.delete(indice)
+            self.liste_charges.insert(indice, self._resume_charge(charge))
+            self._annuler_edition_charge()
+        else:
+            self.charges.append(charge)
+            self.liste_charges.insert("end", self._resume_charge(charge))
+        self._maj_apercu_charges()
+
+    def _modifier_charge(self) -> None:
+        selection = self.liste_charges.curselection()
+        if not selection:
+            messagebox.showinfo("Aucune sélection", "Sélectionnez d'abord une charge dans la liste à modifier.")
+            return
+        indice = selection[0]
+        self.indice_charge_en_edition = indice
+        for cle, valeur in saisie.champs_depuis_charge(self.charges[indice]).items():
+            self.vars_charge[cle].set(valeur)
+        self.bouton_charge.config(text="Mettre à jour la charge")
+        self.bouton_annuler_edition.pack(side="left", padx=2)
+
+    def _annuler_edition_charge(self) -> None:
+        self.indice_charge_en_edition = None
+        self.bouton_charge.config(text="Ajouter la charge")
+        self.bouton_annuler_edition.pack_forget()
 
     def _supprimer_charge(self) -> None:
         selection = self.liste_charges.curselection()
@@ -243,6 +441,11 @@ class Application(tk.Tk):
         indice = selection[0]
         self.liste_charges.delete(indice)
         del self.charges[indice]
+        if self.indice_charge_en_edition == indice:
+            self._annuler_edition_charge()
+        elif self.indice_charge_en_edition is not None and self.indice_charge_en_edition > indice:
+            self.indice_charge_en_edition -= 1
+        self._maj_apercu_charges()
 
     def _construire_projet(self) -> Projet | None:
         try:
@@ -330,10 +533,12 @@ class Application(tk.Tk):
     def _nouveau(self) -> None:
         self.charges.clear()
         self.liste_charges.delete(0, "end")
+        self._annuler_edition_charge()
         self.resultat = None
         self.projet_courant = None
         self.chemin_projet = None
         self.var_nom_projet.set("Nouveau projet")
+        self._maj_apercu_charges()
 
     def _ouvrir(self) -> None:
         chemin = filedialog.askopenfilename(filetypes=[("Projet mur contre-terre", "*.mct"), ("Tous les fichiers", "*")])
@@ -348,6 +553,7 @@ class Application(tk.Tk):
         self.chemin_projet = chemin
 
     def _charger_projet(self, projet: Projet) -> None:
+        self._annuler_edition_charge()
         self.var_nom_projet.set(projet.nom)
 
         g = projet.geometrie
@@ -382,7 +588,8 @@ class Application(tk.Tk):
         self.charges = list(projet.charges)
         self.liste_charges.delete(0, "end")
         for charge in self.charges:
-            self.liste_charges.insert("end", f"{charge.nom} ({charge.type.value}, {charge.categorie.value})")
+            self.liste_charges.insert("end", self._resume_charge(charge))
+        self._maj_apercu_charges()
 
     def _enregistrer_sous(self) -> None:
         projet = self._construire_projet()

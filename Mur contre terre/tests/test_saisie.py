@@ -5,6 +5,7 @@ from mur_contre_terre.donnees.charges import CategorieAction, TypeCharge
 from mur_contre_terre.donnees.sol import TypePoussee
 from mur_contre_terre.interface.saisie import (
     appuis_depuis_champs,
+    champs_depuis_charge,
     charge_depuis_champs,
     geometrie_depuis_champs,
     materiaux_depuis_champs,
@@ -139,3 +140,39 @@ def test_charge_depuis_champs_categorie_inconnue_leve_une_erreur():
 def test_charge_depuis_champs_nom_manquant_leve_une_erreur():
     with pytest.raises(ValueError, match="Nom"):
         charge_depuis_champs({"type": "charge_tete", "categorie": "Q", "valeur": "1"})
+
+
+def test_champs_depuis_charge_aller_retour_charge_tete():
+    original = charge_depuis_champs(
+        {"nom": "Charge tête", "type": "charge_tete", "categorie": "Q", "valeur": "30", "psi0": "0.7",
+         "psi1": "0.5", "psi2": "0.3", "excentricite": "0.05"}
+    )
+    champs = champs_depuis_charge(original)
+    assert champs["nom"] == "Charge tête"
+    assert champs["type"] == "charge_tete"
+    assert champs["categorie"] == "Q"
+    assert champs["valeur"] == "30"
+    assert champs["psi0"] == "0.7"
+    assert champs["excentricite"] == "0.05"
+    assert champs["distance"] == ""
+
+    reconstruite = charge_depuis_champs(champs)
+    assert reconstruite.valeur == pytest.approx(original.valeur)
+    assert reconstruite.type is original.type
+    assert reconstruite.parametres == original.parametres
+
+
+def test_champs_depuis_charge_poids_propre_valeur_nulle():
+    original = charge_depuis_champs({"nom": "Poids propre", "type": "poids_propre", "categorie": "G"})
+    champs = champs_depuis_charge(original)
+    assert champs["valeur"] == "0"
+
+
+def test_champs_depuis_charge_compactage_en_kn_m2():
+    original = charge_depuis_champs(
+        {"nom": "Compactage", "type": "pression_compactage", "categorie": "Q", "valeur": "10",
+         "profondeur_application": "1.5"}
+    )
+    champs = champs_depuis_charge(original)
+    assert champs["valeur"] == "10"
+    assert champs["profondeur_application"] == "1.5"

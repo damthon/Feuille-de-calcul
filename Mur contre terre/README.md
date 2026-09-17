@@ -302,17 +302,29 @@ mur-contre-terre verifier projet.mct                # calcule et affiche la note
 mur-contre-terre verifier projet.mct -o note.md      # … ou l'écrit dans un fichier
 ```
 
-`interface/bureau.py` (Tkinter, module de la bibliothèque standard —
-aucune dépendance supplémentaire) ouvre une fenêtre à onglets
-(géométrie, sol, appuis, matériaux, charges, résultats) ;
-`interface/saisie.py` porte la seule traduction entre les champs
-(unités utilisateur : m, °, kN, kN/m², kN/m³, MPa) et les dataclasses de
-calcul — testée sans Tkinter. Sauvegarde/chargement de projet réutilise
-directement `Projet.sauvegarder`/`Projet.charger` (JSON `.mct`, lot 1).
-`cli.py` fournit le point d'entrée (`mur-contre-terre`, voir
-`[project.scripts]`) : sans sous-commande il lance l'interface, sinon
-`verifier` calcule un projet sans fenêtre — c'est aussi la base de
-l'exécutable empaqueté (lot 11, `--autotest`).
+`interface/bureau.py` (Tkinter, extra `[bureau]` pour matplotlib) ouvre
+une fenêtre à onglets (géométrie, sol, appuis, matériaux, charges,
+résultats) ; `interface/saisie.py` porte la seule traduction entre les
+champs (unités utilisateur : m, °, kN, kN/m², kN/m³, MPa) et les
+dataclasses de calcul — testée sans Tkinter. Sauvegarde/chargement de
+projet réutilise directement `Projet.sauvegarder`/`Projet.charger`
+(JSON `.mct`, lot 1). `cli.py` fournit le point d'entrée
+(`mur-contre-terre`, voir `[project.scripts]`) : sans sous-commande il
+lance l'interface, sinon `verifier` calcule un projet sans fenêtre —
+c'est aussi la base de l'exécutable empaqueté (lot 11, `--autotest`).
+
+Chaque onglet de saisie affiche à droite du formulaire un aperçu
+graphique à l'échelle (`trace.figure_geometrie` pour Géométrie/Sol/Appuis
+— coupe du mur, massif de terre retenu, niveau de nappe, symboles
+d'appui ; `trace.figure_section_materiaux` pour Matériaux — enrobages
+cotés ; `trace.figure_charges` pour Charges — une flèche par charge
+appliquée, coloriée selon la catégorie d'action G/Q/A, plus un aperçu en
+pointillés de la charge en cours de saisie avant son ajout) qui se
+redessine automatiquement, avec un léger différé, à chaque modification
+d'un champ. Dans l'onglet Charges, la liste des charges déjà ajoutées se
+double-clique (ou bouton « Modifier la charge sélectionnée ») pour
+recharger ses valeurs dans le formulaire et les corriger, plutôt que de
+devoir la supprimer puis la ressaisir.
 
 Tkinter fait partie de la bibliothèque standard mais n'est pas toujours
 présent dans un environnement de développement minimal (ex. `python3-tk`

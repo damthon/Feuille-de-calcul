@@ -29,7 +29,7 @@ from mur_contre_terre.donnees.charges import CasDeCharge, CategorieAction, TypeC
 from mur_contre_terre.donnees.geometrie import Geometrie
 from mur_contre_terre.donnees.materiaux import Acier, Beton, Materiaux
 from mur_contre_terre.donnees.sol import Sol, TypePoussee
-from mur_contre_terre.unites import deg, kN, kN_m2, kN_m3, MPa
+from mur_contre_terre.unites import deg, en_kN, en_kN_m2, kN, kN_m2, kN_m3, MPa
 
 # Type de charge -> conversion à appliquer à CasDeCharge.parametres["valeur"] (kN, kN/m ou kN/m²).
 # POUSSEE_TERRES et PRESSION_HYDROSTATIQUE sont calculées depuis Sol/Geometrie : valeur ignorée (0.0 attendu).
@@ -43,6 +43,23 @@ _UNITE_VALEUR = {
     TypeCharge.PRESSION_HYDROSTATIQUE: None,
     TypeCharge.PRESSION_COMPACTAGE: kN_m2,
 }
+
+# Inverse de _UNITE_VALEUR — reconstruit la valeur en unités utilisateur depuis le SI (voir champs_depuis_charge).
+_UNITE_VALEUR_INVERSE = {
+    TypeCharge.POIDS_PROPRE: None,
+    TypeCharge.CHARGE_TETE: en_kN,
+    TypeCharge.POUSSEE_TERRES: None,
+    TypeCharge.SURCHARGE_TETE: en_kN_m2,
+    TypeCharge.CHARGE_SURFACIQUE_TERREPLEIN: en_kN_m2,
+    TypeCharge.CHARGE_LINEAIRE_TERREPLEIN: en_kN,
+    TypeCharge.PRESSION_HYDROSTATIQUE: None,
+    TypeCharge.PRESSION_COMPACTAGE: en_kN_m2,
+}
+
+
+def _formater(valeur: float) -> str:
+    """Représentation compacte d'un nombre pour un champ de saisie (pas de zéros superflus)."""
+    return f"{valeur:g}"
 
 
 def _champ(champs: Mapping[str, str], cle: str) -> str:
@@ -154,3 +171,22 @@ def charge_depuis_champs(champs: Mapping[str, str]) -> CasDeCharge:
         psi2=_float(champs, "psi2", "ψ2") if _champ(champs, "psi2") else 0.0,
         parametres=parametres,
     )
+
+
+def champs_depuis_charge(charge: CasDeCharge) -> dict[str, str]:
+    """Inverse de ``charge_depuis_champs`` : reconstruit les champs de saisie (unités utilisateur)
+    d'une ``CasDeCharge`` existante, pour pré-remplir le formulaire lors de sa modification."""
+    conversion = _UNITE_VALEUR_INVERSE[charge.type]
+    valeur = conversion(charge.valeur) if conversion is not None else 0.0
+    champs = {
+        "nom": charge.nom,
+        "type": charge.type.value,
+        "categorie": charge.categorie.value,
+        "valeur": _formater(valeur),
+        "psi0": _formater(charge.psi0),
+        "psi1": _formater(charge.psi1),
+        "psi2": _formater(charge.psi2),
+    }
+    for cle in ("excentricite", "distance", "etendue", "profondeur_application"):
+        champs[cle] = _formater(charge.parametres[cle]) if cle in charge.parametres else ""
+    return champs
