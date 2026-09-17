@@ -24,6 +24,8 @@ from mur_contre_terre.donnees.charges import CasDeCharge, CategorieAction, TypeC
 from mur_contre_terre.donnees.geometrie import Geometrie
 from mur_contre_terre.donnees.materiaux import Materiaux
 from mur_contre_terre.donnees.sol import Sol
+from mur_contre_terre.geotechnique.hydrostatique import pression_hydrostatique
+from mur_contre_terre.geotechnique.poussee import profil_poussee
 from mur_contre_terre.mecanique.maillage import Maillage
 from mur_contre_terre.mecanique.solveur_lineaire import ResultatMecanique
 from mur_contre_terre.section_ba.moment_courbure import PointMomentCourbure
@@ -189,6 +191,54 @@ def figure_geometrie(geometrie: Geometrie, sol: Sol | None = None, appuis: Condi
     ax.set_title("Géométrie du mur")
     ax.set_aspect("equal", adjustable="box")
     ax.margins(0.12)
+    fig.tight_layout()
+    return fig
+
+
+def figure_pression_sol(sol: Sol, geometrie: Geometrie) -> Figure:
+    """Profil, sur la hauteur du mur, de la pression horizontale de poussée des terres (toujours) et de
+    la pression hydrostatique (si une nappe est définie) — ces deux actions sont générées automatiquement
+    depuis les seules valeurs de cet onglet pour le calcul (voir ``calcul.charges_effectives``), d'où cet
+    aperçu pour en lire directement les valeurs plutôt que de devoir les saisir dans l'onglet Charges."""
+    h = geometrie.hauteur
+    z = np.linspace(0.0, h, 60)
+    profondeurs = h - z
+    e_ah = np.array([en_kN_m2(profil_poussee(sol, h, p)[0]) for p in profondeurs])
+
+    fig, ax = plt.subplots(figsize=(4.2, 6))
+    ax.plot(e_ah, z, color=_COULEUR_COTE, linewidth=1.8, label="Poussée des terres $e_{ah}$")
+    ax.fill_betweenx(z, 0.0, e_ah, color=_COULEUR_COTE, alpha=0.18)
+    _bbox_valeur = {"boxstyle": "round,pad=0.12", "facecolor": "white", "edgecolor": "none", "alpha": 0.85}
+    ax.annotate(
+        f"{e_ah[0]:.1f} kN/m²", xy=(e_ah[0], 0.0), xytext=(-6, 10), textcoords="offset points",
+        fontsize=7, color=_COULEUR_COTE, ha="right", bbox=_bbox_valeur,
+    )
+    ax.annotate(
+        f"{e_ah[-1]:.1f} kN/m²", xy=(e_ah[-1], h), xytext=(6, -10), textcoords="offset points",
+        fontsize=7, color=_COULEUR_COTE, ha="left", bbox=_bbox_valeur,
+    )
+
+    if sol.niveau_nappe is not None:
+        u = np.array([en_kN_m2(pression_hydrostatique(sol, h, p)) for p in profondeurs])
+        ax.plot(u, z, color=_COULEUR_NAPPE, linewidth=1.8, linestyle="--", label="Pression hydrostatique $u$")
+        ax.fill_betweenx(z, 0.0, u, color=_COULEUR_NAPPE, alpha=0.2)
+        ax.axhline(sol.niveau_nappe, color=_COULEUR_NAPPE, linewidth=0.8, linestyle=":")
+        ax.annotate(
+            f"nappe z={sol.niveau_nappe:.2f} m", xy=(0.0, sol.niveau_nappe), xytext=(4, 4),
+            textcoords="offset points", fontsize=7, color=_COULEUR_NAPPE,
+        )
+        ax.annotate(
+            f"{u[0]:.1f} kN/m²", xy=(u[0], 0.0), xytext=(-6, 24), textcoords="offset points",
+            fontsize=7, color=_COULEUR_NAPPE, ha="right", bbox=_bbox_valeur,
+        )
+
+    ax.set_xlabel("pression [kN/m²]")
+    ax.set_ylabel("hauteur z [m]")
+    ax.set_title("Pression horizontale sur le mur")
+    ax.set_ylim(0.0, h)
+    ax.margins(x=0.28)
+    ax.axvline(0.0, color="black", linewidth=0.6)
+    ax.legend(fontsize=7, loc="upper right")
     fig.tight_layout()
     return fig
 
@@ -449,5 +499,6 @@ __all__ = [
     "figure_efforts",
     "figure_geometrie",
     "figure_moment_courbure",
+    "figure_pression_sol",
     "figure_section_materiaux",
 ]

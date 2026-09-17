@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mur_contre_terre.calcul import calculer, verifier_section
+from mur_contre_terre.calcul import calculer, charges_effectives, verifier_section
 from mur_contre_terre.donnees.appuis import ConditionsAppui, TypeAppuiPied, TypeAppuiTete
 from mur_contre_terre.donnees.charges import CasDeCharge, CategorieAction, TypeCharge
 from mur_contre_terre.donnees.geometrie import Geometrie
@@ -57,6 +57,70 @@ def test_calculer_effort_tranchant_decroit_vers_la_tete():
     v_ed = [v.effort_tranchant_ed for v in r.verifications]
     assert v_ed[0] > v_ed[-1]
     assert v_ed == sorted(v_ed, reverse=True)
+
+
+# charges_effectives() — la poussée des terres et la pression hydrostatique sont désormais générées
+# automatiquement depuis Sol/Geometrie, plutôt que saisies manuellement dans l'onglet Charges.
+
+
+def _projet_sans_charges_terre(niveau_nappe: float | None = None) -> Projet:
+    sol = Sol(
+        gamma=kN_m3(18), phi=deg(30), delta=deg(20), type_poussee=TypePoussee.ACTIF, niveau_nappe=niveau_nappe,
+        gamma_sat=kN_m3(20) if niveau_nappe is not None else None,
+    )
+    return Projet(
+        nom="Test",
+        geometrie=Geometrie(hauteur=3.0, ep_base=0.30, ep_couronnement=0.20, debord_semelle=0.8, ep_semelle=0.4),
+        sol=sol,
+        appuis=ConditionsAppui(pied=TypeAppuiPied.ENCASTREMENT, tete=TypeAppuiTete.LIBRE),
+        materiaux=Materiaux(
+            beton=Beton.depuis_classe("C30/37"), acier=Acier.b500b(), enrobage_terre=0.05, enrobage_interieur=0.04
+        ),
+        charges=(CasDeCharge(nom="Poids propre", type=TypeCharge.POIDS_PROPRE, categorie=CategorieAction.G, valeur=0.0),),
+        finesse_maillage=0.5,
+    )
+
+
+def test_charges_effectives_ajoute_toujours_la_poussee_des_terres():
+    charges = charges_effectives(_projet_sans_charges_terre())
+    types = [c.type for c in charges]
+    assert types.count(TypeCharge.POUSSEE_TERRES) == 1
+    assert TypeCharge.PRESSION_HYDROSTATIQUE not in types
+    assert TypeCharge.POIDS_PROPRE in types  # les charges manuelles restent présentes
+
+
+def test_charges_effectives_ajoute_la_pression_hydrostatique_si_nappe_definie():
+    charges = charges_effectives(_projet_sans_charges_terre(niveau_nappe=1.0))
+    types = [c.type for c in charges]
+    assert types.count(TypeCharge.PRESSION_HYDROSTATIQUE) == 1
+    assert types.count(TypeCharge.POUSSEE_TERRES) == 1
+
+
+def test_charges_effectives_ignore_les_charges_manuelles_obsoletes_pour_eviter_le_double_comptage():
+    """Un fichier .mct enregistré avant ce changement peut encore porter une poussée/hydrostatique
+    ajoutée à la main : elle ne doit pas s'additionner à la version générée automatiquement."""
+    sol = Sol(
+        gamma=kN_m3(18), phi=deg(30), delta=deg(20), type_poussee=TypePoussee.ACTIF, niveau_nappe=1.0,
+        gamma_sat=kN_m3(20),
+    )
+    projet = Projet(
+        nom="Test",
+        geometrie=Geometrie(hauteur=3.0, ep_base=0.30, ep_couronnement=0.20, debord_semelle=0.8, ep_semelle=0.4),
+        sol=sol,
+        appuis=ConditionsAppui(pied=TypeAppuiPied.ENCASTREMENT, tete=TypeAppuiTete.LIBRE),
+        materiaux=Materiaux(
+            beton=Beton.depuis_classe("C30/37"), acier=Acier.b500b(), enrobage_terre=0.05, enrobage_interieur=0.04
+        ),
+        charges=(
+            CasDeCharge(nom="Poussee (ancien fichier)", type=TypeCharge.POUSSEE_TERRES, categorie=CategorieAction.G, valeur=0.0),
+            CasDeCharge(nom="Hydro (ancien fichier)", type=TypeCharge.PRESSION_HYDROSTATIQUE, categorie=CategorieAction.G, valeur=0.0),
+        ),
+    )
+    charges = charges_effectives(projet)
+    types = [c.type for c in charges]
+    assert types.count(TypeCharge.POUSSEE_TERRES) == 1
+    assert types.count(TypeCharge.PRESSION_HYDROSTATIQUE) == 1
+    assert "Poussee (ancien fichier)" not in [c.nom for c in charges]
 
 
 def _maillage_deux_elements() -> Maillage:

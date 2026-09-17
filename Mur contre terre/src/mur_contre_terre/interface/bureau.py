@@ -26,7 +26,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 from mur_contre_terre import trace
-from mur_contre_terre.calcul import ResultatCalcul, calculer
+from mur_contre_terre.calcul import ResultatCalcul, TYPES_CHARGE_AUTOMATIQUES, calculer
 from mur_contre_terre.donnees.appuis import ConditionsAppui, TypeAppuiPied, TypeAppuiTete
 from mur_contre_terre.donnees.charges import CasDeCharge, TypeCharge
 from mur_contre_terre.donnees.geometrie import Geometrie
@@ -40,7 +40,9 @@ from mur_contre_terre.unites import en_deg, en_kN, en_kN_m2, en_kN_m3, en_MPa
 TITRE = "Mur contre-terre"
 
 _CLASSES_BETON = ("C20/25", "C25/30", "C30/37", "C35/45", "C40/50")
-_TYPES_CHARGE = tuple(t.value for t in TypeCharge)
+# Poussée des terres et pression hydrostatique sont désormais générées automatiquement depuis l'onglet
+# Sol (voir calcul.charges_effectives) : elles ne figurent plus dans les types sélectionnables ici.
+_TYPES_CHARGE = tuple(t.value for t in TypeCharge if t not in TYPES_CHARGE_AUTOMATIQUES)
 _CATEGORIES = ("G", "Q", "A")
 
 # Géométrie de repli pour l'aperçu de l'onglet Charges tant que l'onglet Géométrie n'a pas
@@ -204,7 +206,8 @@ class Application(tk.Tk):
         )
         self._champ(formulaire, 9, "Module de réaction ks [MN/m³]", self.vars_sol, "ks", "", infobulle.TEXTES["ks"])
 
-        self.canvas_sol = self._construire_apercu(cadre)
+        self.canvas_sol = self._construire_apercu(cadre, largeur=3.6)
+        self.canvas_pression = self._construire_apercu(cadre, largeur=3.6)
         for var in self.vars_sol.values():
             var.trace_add("write", self._on_champ_change_mur)
             var.trace_add("write", self._on_champ_change_charges)
@@ -377,7 +380,8 @@ class Application(tk.Tk):
             plt.close(ancienne_figure)
 
     def _maj_apercus_mur(self) -> None:
-        """Aperçu commun aux onglets Géométrie/Sol/Appuis : coupe du mur, massif de terre/nappe, appuis."""
+        """Aperçu commun aux onglets Géométrie/Sol/Appuis : coupe du mur, massif de terre/nappe, appuis ;
+        et, dans l'onglet Sol, profil de pression horizontale (poussée des terres + hydrostatique)."""
         geometrie = self._construire_geometrie_ou_none()
         if geometrie is None:
             return
@@ -385,6 +389,8 @@ class Application(tk.Tk):
         appuis = self._construire_appuis_ou_none()
         for canvas in (self.canvas_geometrie, self.canvas_sol, self.canvas_appuis):
             self._dessiner(canvas, lambda g=geometrie, s=sol, a=appuis: trace.figure_geometrie(g, s, a))
+        if sol is not None:
+            self._dessiner(self.canvas_pression, lambda g=geometrie, s=sol: trace.figure_pression_sol(s, g))
 
     def _maj_apercu_materiaux(self) -> None:
         geometrie = self._construire_geometrie_ou_none()
@@ -641,7 +647,10 @@ class Application(tk.Tk):
         self.vars_materiaux["enrobage_terre"].set(str(m.enrobage_terre * 1000.0))
         self.vars_materiaux["enrobage_interieur"].set(str(m.enrobage_interieur * 1000.0))
 
-        self.charges = list(projet.charges)
+        # poussée des terres/pression hydrostatique : plus une charge gérée manuellement (voir
+        # TYPES_CHARGE_AUTOMATIQUES) — un fichier .mct antérieur à ce changement peut encore en porter,
+        # elles sont donc filtrées ici plutôt que de rester dans la liste sans être modifiables.
+        self.charges = [c for c in projet.charges if c.type not in TYPES_CHARGE_AUTOMATIQUES]
         self.liste_charges.delete(0, "end")
         for charge in self.charges:
             self.liste_charges.insert("end", self._resume_charge(charge))

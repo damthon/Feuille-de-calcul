@@ -18,6 +18,7 @@ from mur_contre_terre.trace import (
     figure_efforts,
     figure_geometrie,
     figure_moment_courbure,
+    figure_pression_sol,
     figure_section_materiaux,
 )
 from mur_contre_terre.unites import deg, kN, kN_m2, kN_m3
@@ -66,6 +67,37 @@ def test_figure_geometrie_avec_sol_et_appuis_ne_leve_pas_d_erreur():
     appuis_ressort = ConditionsAppui(pied=TypeAppuiPied.RESSORT, tete=TypeAppuiTete.APPUI_DALLE)
     fig = figure_geometrie(projet.geometrie, sol_avec_nappe, appuis_ressort)
     assert len(fig.axes) == 1
+
+
+def test_figure_pression_sol_sans_nappe_affiche_seulement_la_poussee():
+    projet = _projet()
+    sol = Sol(gamma=kN_m3(18), phi=deg(30), delta=deg(20))
+    fig = figure_pression_sol(sol, projet.geometrie)
+    assert len(fig.axes) == 1
+    textes = " ".join(t.get_text() for t in fig.axes[0].texts)
+    assert "kN/m²" in textes
+    assert "hydrostatique" not in textes.lower()
+
+
+def test_figure_pression_sol_avec_nappe_affiche_les_deux_profils():
+    projet = _projet()
+    sol = Sol(gamma=kN_m3(18), phi=deg(30), delta=deg(20), niveau_nappe=1.0, gamma_sat=kN_m3(20))
+    fig = figure_pression_sol(sol, projet.geometrie)
+    legende = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    assert any("Poussée" in t for t in legende)
+    assert any("hydrostatique" in t.lower() for t in legende)
+
+
+def test_figure_pression_sol_pression_croit_avec_la_profondeur():
+    """La poussée des terres doit être maximale au pied (z=0) et nulle (ou proche) en tête (z=hauteur)."""
+    projet = _projet()
+    sol = Sol(gamma=kN_m3(18), phi=deg(30), delta=deg(20))
+    fig = figure_pression_sol(sol, projet.geometrie)
+    ligne = fig.axes[0].lines[0]
+    valeurs = ligne.get_xdata()
+    hauteurs = ligne.get_ydata()
+    assert hauteurs[0] < hauteurs[-1]  # tracé du pied (z=0) vers la tête
+    assert valeurs[0] > valeurs[-1]  # pression maximale au pied
 
 
 def test_figure_section_materiaux_a_un_axe():

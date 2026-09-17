@@ -75,10 +75,12 @@ def test_contrainte_verticale_effective_sans_nappe():
 
 
 def test_contrainte_verticale_effective_avec_nappe():
+    # niveau_nappe=2.0 (depuis le pied) dans un mur de 3 m : plan d'eau à une profondeur de 1.0 m
+    # sous la surface. Au pied (profondeur=3.0) : gamma sur le premier mètre sec, gamma' sur les 2 m
+    # immergés en dessous.
     sol = Sol(gamma=kN_m3(18), phi=deg(30), gamma_sat=kN_m3(20), niveau_nappe=2.0)
-    # au-dessus de la nappe : gamma ; en dessous : gamma' = gamma_sat - gamma_eau
     gamma_prime = kN_m3(20) - 9.81e3
-    attendu = 18e3 * 2.0 + gamma_prime * 1.0
+    attendu = 18e3 * 1.0 + gamma_prime * 2.0
     assert contrainte_verticale_effective(sol, hauteur=3.0, profondeur=3.0) == pytest.approx(attendu)
 
 
