@@ -110,7 +110,7 @@ def poussee_des_terres(sol: Sol, geometrie: Geometrie, maillage: Maillage, g0: f
 
 def hydrostatique(sol: Sol, geometrie: Geometrie, maillage: Maillage) -> np.ndarray:
     """Pression hydrostatique côté terre."""
-    valeurs = [pression_hydrostatique(sol, geometrie.hauteur - z) for z in maillage.positions]
+    valeurs = [pression_hydrostatique(sol, geometrie.hauteur, geometrie.hauteur - z) for z in maillage.positions]
     return assembler_charge_transversale(maillage, valeurs)
 
 

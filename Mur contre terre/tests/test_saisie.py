@@ -4,6 +4,9 @@ from mur_contre_terre.donnees.appuis import TypeAppuiPied, TypeAppuiTete
 from mur_contre_terre.donnees.charges import CategorieAction, TypeCharge
 from mur_contre_terre.donnees.sol import TypePoussee
 from mur_contre_terre.interface.saisie import (
+    PARAMETRES_PAR_TYPE,
+    TYPES_AVEC_VALEUR,
+    UNITE_AFFICHEE_VALEUR,
     appuis_depuis_champs,
     champs_depuis_charge,
     charge_depuis_champs,
@@ -176,3 +179,25 @@ def test_champs_depuis_charge_compactage_en_kn_m2():
     champs = champs_depuis_charge(original)
     assert champs["valeur"] == "10"
     assert champs["profondeur_application"] == "1.5"
+
+
+# Métadonnées consommées par l'interface (bureau.py) pour n'afficher que les champs utilisables selon le
+# type de charge sélectionné — voir mecanique.charges_nodales.vecteur_charge pour la liste faisant foi.
+
+
+def test_parametres_par_type_couvre_tous_les_types_de_charge():
+    assert set(PARAMETRES_PAR_TYPE) == set(TypeCharge)
+
+
+def test_types_avec_valeur_correspond_aux_types_a_conversion_definie():
+    assert TYPES_AVEC_VALEUR == {
+        TypeCharge.CHARGE_TETE,
+        TypeCharge.SURCHARGE_TETE,
+        TypeCharge.CHARGE_SURFACIQUE_TERREPLEIN,
+        TypeCharge.CHARGE_LINEAIRE_TERREPLEIN,
+        TypeCharge.PRESSION_COMPACTAGE,
+    }
+
+
+def test_unite_affichee_valeur_definie_pour_chaque_type_avec_valeur():
+    assert set(UNITE_AFFICHEE_VALEUR) == TYPES_AVEC_VALEUR

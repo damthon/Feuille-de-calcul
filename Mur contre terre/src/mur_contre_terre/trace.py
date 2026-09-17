@@ -24,6 +24,8 @@ from mur_contre_terre.donnees.charges import CasDeCharge, CategorieAction, TypeC
 from mur_contre_terre.donnees.geometrie import Geometrie
 from mur_contre_terre.donnees.materiaux import Materiaux
 from mur_contre_terre.donnees.sol import Sol
+from mur_contre_terre.geotechnique.hydrostatique import pression_hydrostatique
+from mur_contre_terre.geotechnique.poussee import profil_poussee
 from mur_contre_terre.mecanique.maillage import Maillage
 from mur_contre_terre.mecanique.solveur_lineaire import ResultatMecanique
 from mur_contre_terre.section_ba.moment_courbure import PointMomentCourbure
@@ -34,6 +36,45 @@ _COULEUR_TERRE = "#DDD2B8"
 _COULEUR_NAPPE = "#1F6FB2"
 _COULEURS_CATEGORIE = {CategorieAction.G: "#4A4A4A", CategorieAction.Q: "#1F6FB2", CategorieAction.A: "#A8391A"}
 _COULEUR_PREVISUALISATION = "#D98A28"
+_COULEUR_COTE = "#1F4E63"
+
+
+def _cote_horizontale(
+    ax: plt.Axes, x1: float, x2: float, y: float, texte: str,
+    couleur: str = _COULEUR_COTE, style: str = "-", alpha: float = 1.0,
+) -> None:
+    """Ligne de cote horizontale (flèches aux deux extrémités + étiquette) entre ``x1`` et ``x2`` à la
+    hauteur ``y`` — dimension visuelle d'une distance saisie par l'utilisateur. Rien n'est dessiné si
+    ``x1``/``x2`` sont confondus (distance nulle, non pertinente à coter)."""
+    if abs(x2 - x1) < 1e-6:
+        return
+    ax.plot([x1, x2], [y, y], color=couleur, linewidth=0.8, linestyle=style, alpha=alpha, zorder=5)
+    ax.annotate(
+        "", xy=(x2, y), xytext=(x1, y),
+        arrowprops={"arrowstyle": "<->", "color": couleur, "lw": 0.8, "linestyle": style, "alpha": alpha}, zorder=5,
+    )
+    ax.text(
+        (x1 + x2) / 2, y, texte, ha="center", va="center", fontsize=7, color=couleur, alpha=alpha, zorder=6,
+        bbox={"boxstyle": "round,pad=0.12", "facecolor": "white", "edgecolor": "none", "alpha": 0.75 * alpha},
+    )
+
+
+def _cote_verticale(
+    ax: plt.Axes, z1: float, z2: float, x: float, texte: str,
+    couleur: str = _COULEUR_COTE, style: str = "-", alpha: float = 1.0,
+) -> None:
+    """Équivalent vertical de ``_cote_horizontale`` (dimension entre ``z1`` et ``z2`` à l'abscisse ``x``)."""
+    if abs(z2 - z1) < 1e-6:
+        return
+    ax.plot([x, x], [z1, z2], color=couleur, linewidth=0.8, linestyle=style, alpha=alpha, zorder=5)
+    ax.annotate(
+        "", xy=(x, z2), xytext=(x, z1),
+        arrowprops={"arrowstyle": "<->", "color": couleur, "lw": 0.8, "linestyle": style, "alpha": alpha}, zorder=5,
+    )
+    ax.text(
+        x, (z1 + z2) / 2, texte, ha="center", va="center", fontsize=7, color=couleur, alpha=alpha, rotation=90,
+        zorder=6, bbox={"boxstyle": "round,pad=0.12", "facecolor": "white", "edgecolor": "none", "alpha": 0.75 * alpha},
+    )
 
 
 def _dessiner_mur(ax: plt.Axes, geometrie: Geometrie) -> float:
@@ -110,11 +151,29 @@ def _dessiner_appuis(ax: plt.Axes, geometrie: Geometrie, appuis: ConditionsAppui
         ax.annotate("tête libre", xy=(x_tete, h), xytext=(4, 4), textcoords="offset points", fontsize=7, color="#777777")
 
 
+def _dessiner_cotes_geometrie(ax: plt.Axes, geometrie: Geometrie) -> None:
+    """Cotes visuelles des 5 dimensions saisies dans l'onglet Géométrie (hauteur, épaisseurs en pied et
+    en tête, débord et épaisseur de semelle), pour repérer chaque champ directement sur le schéma."""
+    h = geometrie.hauteur
+    x0 = geometrie.epaisseur(0.0)
+    xh = geometrie.epaisseur(h)
+    b = geometrie.debord_semelle
+    x_exterieur = max(x0 + b, xh) + 0.6
+
+    _cote_verticale(ax, 0.0, h, x_exterieur, f"H = {h:.2f} m")
+    _cote_verticale(ax, -geometrie.ep_semelle, 0.0, x0 + b + 0.18, f"{geometrie.ep_semelle:.2f} m")
+    _cote_horizontale(ax, 0.0, x0, -0.16, f"{geometrie.ep_base:.2f} m")
+    _cote_horizontale(ax, 0.0, xh, h + 0.38, f"{geometrie.ep_couronnement:.2f} m")
+    _cote_horizontale(ax, x0, x0 + b, 0.08, f"{b:.2f} m")
+
+
 def figure_geometrie(geometrie: Geometrie, sol: Sol | None = None, appuis: ConditionsAppui | None = None) -> Figure:
     """Coupe schématique à l'échelle du mur, avec en option le massif de terre/nappe (``sol``)
-    et les symboles d'appui (``appuis``) — sert d'aperçu graphique aux onglets Géométrie, Sol et Appuis."""
+    et les symboles d'appui (``appuis``) — sert d'aperçu graphique aux onglets Géométrie, Sol et Appuis.
+    Les 5 dimensions saisies dans l'onglet Géométrie sont toujours cotées sur le schéma."""
     fig, ax = plt.subplots(figsize=(4, 6))
     x0 = _dessiner_mur(ax, geometrie)
+    _dessiner_cotes_geometrie(ax, geometrie)
 
     if sol is not None:
         try:
@@ -132,6 +191,54 @@ def figure_geometrie(geometrie: Geometrie, sol: Sol | None = None, appuis: Condi
     ax.set_title("Géométrie du mur")
     ax.set_aspect("equal", adjustable="box")
     ax.margins(0.12)
+    fig.tight_layout()
+    return fig
+
+
+def figure_pression_sol(sol: Sol, geometrie: Geometrie) -> Figure:
+    """Profil, sur la hauteur du mur, de la pression horizontale de poussée des terres (toujours) et de
+    la pression hydrostatique (si une nappe est définie) — ces deux actions sont générées automatiquement
+    depuis les seules valeurs de cet onglet pour le calcul (voir ``calcul.charges_effectives``), d'où cet
+    aperçu pour en lire directement les valeurs plutôt que de devoir les saisir dans l'onglet Charges."""
+    h = geometrie.hauteur
+    z = np.linspace(0.0, h, 60)
+    profondeurs = h - z
+    e_ah = np.array([en_kN_m2(profil_poussee(sol, h, p)[0]) for p in profondeurs])
+
+    fig, ax = plt.subplots(figsize=(4.2, 6))
+    ax.plot(e_ah, z, color=_COULEUR_COTE, linewidth=1.8, label="Poussée des terres $e_{ah}$")
+    ax.fill_betweenx(z, 0.0, e_ah, color=_COULEUR_COTE, alpha=0.18)
+    _bbox_valeur = {"boxstyle": "round,pad=0.12", "facecolor": "white", "edgecolor": "none", "alpha": 0.85}
+    ax.annotate(
+        f"{e_ah[0]:.1f} kN/m²", xy=(e_ah[0], 0.0), xytext=(-6, 10), textcoords="offset points",
+        fontsize=7, color=_COULEUR_COTE, ha="right", bbox=_bbox_valeur,
+    )
+    ax.annotate(
+        f"{e_ah[-1]:.1f} kN/m²", xy=(e_ah[-1], h), xytext=(6, -10), textcoords="offset points",
+        fontsize=7, color=_COULEUR_COTE, ha="left", bbox=_bbox_valeur,
+    )
+
+    if sol.niveau_nappe is not None:
+        u = np.array([en_kN_m2(pression_hydrostatique(sol, h, p)) for p in profondeurs])
+        ax.plot(u, z, color=_COULEUR_NAPPE, linewidth=1.8, linestyle="--", label="Pression hydrostatique $u$")
+        ax.fill_betweenx(z, 0.0, u, color=_COULEUR_NAPPE, alpha=0.2)
+        ax.axhline(sol.niveau_nappe, color=_COULEUR_NAPPE, linewidth=0.8, linestyle=":")
+        ax.annotate(
+            f"nappe z={sol.niveau_nappe:.2f} m", xy=(0.0, sol.niveau_nappe), xytext=(4, 4),
+            textcoords="offset points", fontsize=7, color=_COULEUR_NAPPE,
+        )
+        ax.annotate(
+            f"{u[0]:.1f} kN/m²", xy=(u[0], 0.0), xytext=(-6, 24), textcoords="offset points",
+            fontsize=7, color=_COULEUR_NAPPE, ha="right", bbox=_bbox_valeur,
+        )
+
+    ax.set_xlabel("pression [kN/m²]")
+    ax.set_ylabel("hauteur z [m]")
+    ax.set_title("Pression horizontale sur le mur")
+    ax.set_ylim(0.0, h)
+    ax.margins(x=0.28)
+    ax.axvline(0.0, color="black", linewidth=0.6)
+    ax.legend(fontsize=7, loc="upper right")
     fig.tight_layout()
     return fig
 
@@ -205,6 +312,9 @@ def _dessiner_charge(
             f"{nom}\n{en_kN(charge.valeur):.1f} kN", xy=(xc, y), xytext=(5, 2),
             textcoords="offset points", fontsize=7, color=couleur, alpha=alpha,
         )
+        excentricite = p.get("excentricite", 0.0)
+        if excentricite:
+            _cote_horizontale(ax, xc, xc + excentricite, h + 0.15 + decalage, f"e={excentricite:.2f} m", couleur, style, alpha)
 
     elif charge.type is TypeCharge.POUSSEE_TERRES:
         for z in np.linspace(0.08 * h, 0.92 * h, 5):
@@ -223,6 +333,11 @@ def _dessiner_charge(
             f"{nom}\n{en_kN_m2(charge.valeur):.1f} kN/m²", xy=(float(np.mean(xs)), y), xytext=(0, 4),
             textcoords="offset points", fontsize=7, color=couleur, ha="center", alpha=alpha,
         )
+        # distance/étendue ne sont des paramètres réellement saisis que pour la charge surfacique
+        # (SURCHARGE_TETE agit sur toute la hauteur du massif via g0 — voir mecanique.charges_nodales)
+        if charge.type is TypeCharge.CHARGE_SURFACIQUE_TERREPLEIN:
+            _cote_horizontale(ax, -distance - etendue, -distance, h + 0.2 + decalage, f"étendue={etendue:.2f} m", couleur, style, alpha)
+            _cote_horizontale(ax, 0.0, -distance, h + 0.06 + decalage, f"d={distance:.2f} m", couleur, style, alpha)
 
     elif charge.type is TypeCharge.CHARGE_LINEAIRE_TERREPLEIN:
         distance = p.get("distance", 0.5)
@@ -232,6 +347,7 @@ def _dessiner_charge(
             f"{nom}\n{en_kN(charge.valeur):.1f} kN/m", xy=(-distance, y), xytext=(0, 4),
             textcoords="offset points", fontsize=7, color=couleur, ha="center", alpha=alpha,
         )
+        _cote_horizontale(ax, 0.0, -distance, h + 0.15 + decalage, f"d={distance:.2f} m", couleur, style, alpha)
 
     elif charge.type is TypeCharge.PRESSION_HYDROSTATIQUE:
         z_nappe = sol.niveau_nappe if (sol is not None and sol.niveau_nappe is not None) else 0.0
@@ -251,6 +367,8 @@ def _dessiner_charge(
             f"{nom}\n{en_kN_m2(charge.valeur):.1f} kN/m²", xy=(-0.32, h - profondeur_app / 2),
             fontsize=7, color=couleur, ha="right", alpha=alpha,
         )
+        x_cote = -min(1.3, 0.9 * max(1.0, 0.6 * h))  # reste dans les limites de `figure_charges` même pour un mur bas
+        _cote_verticale(ax, max(h - profondeur_app, 0.0), h, x_cote, f"prof.={profondeur_app:.2f} m", couleur, style, alpha)
 
 
 def figure_charges(
@@ -381,5 +499,6 @@ __all__ = [
     "figure_efforts",
     "figure_geometrie",
     "figure_moment_courbure",
+    "figure_pression_sol",
     "figure_section_materiaux",
 ]

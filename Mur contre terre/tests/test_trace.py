@@ -18,6 +18,7 @@ from mur_contre_terre.trace import (
     figure_efforts,
     figure_geometrie,
     figure_moment_courbure,
+    figure_pression_sol,
     figure_section_materiaux,
 )
 from mur_contre_terre.unites import deg, kN, kN_m2, kN_m3
@@ -45,6 +46,19 @@ def test_figure_geometrie_a_les_bons_axes():
     assert len(fig.axes) == 1
 
 
+def test_figure_geometrie_cote_les_5_dimensions_saisies():
+    """Les 5 champs de l'onglet Géométrie (H, ep_base, ep_couronnement, débord, ep_semelle) doivent
+    être repérables sur le schéma par une cote visuelle — voir _dessiner_cotes_geometrie."""
+    geometrie = _projet().geometrie
+    fig = figure_geometrie(geometrie)
+    textes = {t.get_text() for t in fig.axes[0].texts}
+    assert any("3.00" in t for t in textes)  # hauteur H
+    assert any(f"{geometrie.ep_base:.2f}" in t for t in textes)
+    assert any(f"{geometrie.ep_couronnement:.2f}" in t for t in textes)
+    assert any(f"{geometrie.debord_semelle:.2f}" in t for t in textes)
+    assert any(f"{geometrie.ep_semelle:.2f}" in t for t in textes)
+
+
 def test_figure_geometrie_avec_sol_et_appuis_ne_leve_pas_d_erreur():
     projet = _projet()
     sol_avec_nappe = Sol(
@@ -53,6 +67,37 @@ def test_figure_geometrie_avec_sol_et_appuis_ne_leve_pas_d_erreur():
     appuis_ressort = ConditionsAppui(pied=TypeAppuiPied.RESSORT, tete=TypeAppuiTete.APPUI_DALLE)
     fig = figure_geometrie(projet.geometrie, sol_avec_nappe, appuis_ressort)
     assert len(fig.axes) == 1
+
+
+def test_figure_pression_sol_sans_nappe_affiche_seulement_la_poussee():
+    projet = _projet()
+    sol = Sol(gamma=kN_m3(18), phi=deg(30), delta=deg(20))
+    fig = figure_pression_sol(sol, projet.geometrie)
+    assert len(fig.axes) == 1
+    textes = " ".join(t.get_text() for t in fig.axes[0].texts)
+    assert "kN/m²" in textes
+    assert "hydrostatique" not in textes.lower()
+
+
+def test_figure_pression_sol_avec_nappe_affiche_les_deux_profils():
+    projet = _projet()
+    sol = Sol(gamma=kN_m3(18), phi=deg(30), delta=deg(20), niveau_nappe=1.0, gamma_sat=kN_m3(20))
+    fig = figure_pression_sol(sol, projet.geometrie)
+    legende = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    assert any("Poussée" in t for t in legende)
+    assert any("hydrostatique" in t.lower() for t in legende)
+
+
+def test_figure_pression_sol_pression_croit_avec_la_profondeur():
+    """La poussée des terres doit être maximale au pied (z=0) et nulle (ou proche) en tête (z=hauteur)."""
+    projet = _projet()
+    sol = Sol(gamma=kN_m3(18), phi=deg(30), delta=deg(20))
+    fig = figure_pression_sol(sol, projet.geometrie)
+    ligne = fig.axes[0].lines[0]
+    valeurs = ligne.get_xdata()
+    hauteurs = ligne.get_ydata()
+    assert hauteurs[0] < hauteurs[-1]  # tracé du pied (z=0) vers la tête
+    assert valeurs[0] > valeurs[-1]  # pression maximale au pied
 
 
 def test_figure_section_materiaux_a_un_axe():
@@ -97,6 +142,50 @@ def test_figure_charges_avec_tous_les_types_et_previsualisation():
     )
     fig = figure_charges(projet.geometrie, sol, charges, previsualisation)
     assert len(fig.axes) == 1
+
+
+def test_figure_charges_cote_les_distances_saisies():
+    """Les distances/étendue/profondeur/excentricité saisies pour une charge doivent apparaître comme
+    cote visuelle sur le schéma (et non uniquement dans l'étiquette de la charge)."""
+    projet = _projet()
+    charges = [
+        CasDeCharge(
+            nom="Charge tête", type=TypeCharge.CHARGE_TETE, categorie=CategorieAction.Q, valeur=kN(30),
+            parametres={"excentricite": 0.08},
+        ),
+        CasDeCharge(
+            nom="Terreplein", type=TypeCharge.CHARGE_SURFACIQUE_TERREPLEIN, categorie=CategorieAction.Q,
+            valeur=kN_m2(5), parametres={"distance": 0.5, "etendue": 2.0},
+        ),
+        CasDeCharge(
+            nom="Linéaire", type=TypeCharge.CHARGE_LINEAIRE_TERREPLEIN, categorie=CategorieAction.Q,
+            valeur=kN(12), parametres={"distance": 0.6},
+        ),
+        CasDeCharge(
+            nom="Compactage", type=TypeCharge.PRESSION_COMPACTAGE, categorie=CategorieAction.Q,
+            valeur=kN_m2(5), parametres={"profondeur_application": 0.8},
+        ),
+    ]
+    fig = figure_charges(projet.geometrie, projet.sol, charges)
+    textes = " ".join(t.get_text() for t in fig.axes[0].texts)
+    assert "e=0.08 m" in textes
+    assert "étendue=2.00 m" in textes
+    assert "d=0.50 m" in textes
+    assert "d=0.60 m" in textes
+    assert "prof.=0.80 m" in textes
+
+
+def test_figure_charges_surcharge_tete_n_affiche_pas_de_cote_distance_etendue():
+    """SURCHARGE_TETE n'a pas de paramètre distance/étendue réel (voir PARAMETRES_PAR_TYPE) : la
+    représentation ne doit donc pas coter des valeurs par défaut trompeuses (0 m / 1 m)."""
+    projet = _projet()
+    charge = CasDeCharge(
+        nom="Surcharge", type=TypeCharge.SURCHARGE_TETE, categorie=CategorieAction.Q, valeur=kN_m2(10)
+    )
+    fig = figure_charges(projet.geometrie, projet.sol, [charge])
+    textes = " ".join(t.get_text() for t in fig.axes[0].texts)
+    assert "étendue=" not in textes
+    assert "d=" not in textes
 
 
 def test_figure_charges_hydrostatique_sans_nappe_definie_ne_leve_pas_d_erreur():

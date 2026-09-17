@@ -107,9 +107,10 @@ kN, kNm, MPa, kN/m², kN/m³ et degrés.
 - Coefficient de poussée active Kah (Coulomb) et au repos K0 (Jaky,
   terrain incliné), avec cohésion et plancher e_ah,k ≥ 5 kN/m² selon
   SIA 261 §4.3.2 — voir [`docs/plan-conception.html`](docs/plan-conception.html) §7.
-- Pression hydrostatique triangulaire depuis le niveau de nappe, réduite
-  par un facteur d'écoulement ; pression de compactage en plateau constant
-  sur les x premiers mètres (modèle simplifié, à affiner au lot 12).
+- Pression hydrostatique triangulaire depuis le niveau de nappe (`Sol.niveau_nappe`,
+  hauteur du plan d'eau depuis le pied du mur), réduite par un facteur
+  d'écoulement ; pression de compactage en plateau constant sur les x
+  premiers mètres (modèle simplifié, à affiner au lot 12).
 - Rigidité en rotation kθ = ks·B³/12 (Winkler) et contrôle de compression
   intégrale de la semelle (e ≤ B/6).
 - Éléments poutre d'Euler-Bernoulli verticaux (pas de transformation de
@@ -316,15 +317,34 @@ c'est aussi la base de l'exécutable empaqueté (lot 11, `--autotest`).
 Chaque onglet de saisie affiche à droite du formulaire un aperçu
 graphique à l'échelle (`trace.figure_geometrie` pour Géométrie/Sol/Appuis
 — coupe du mur, massif de terre retenu, niveau de nappe, symboles
-d'appui ; `trace.figure_section_materiaux` pour Matériaux — enrobages
-cotés ; `trace.figure_charges` pour Charges — une flèche par charge
-appliquée, coloriée selon la catégorie d'action G/Q/A, plus un aperçu en
-pointillés de la charge en cours de saisie avant son ajout) qui se
-redessine automatiquement, avec un léger différé, à chaque modification
-d'un champ. Dans l'onglet Charges, la liste des charges déjà ajoutées se
-double-clique (ou bouton « Modifier la charge sélectionnée ») pour
-recharger ses valeurs dans le formulaire et les corriger, plutôt que de
-devoir la supprimer puis la ressaisir.
+d'appui, cotes visuelles des 5 dimensions saisies (H, épaisseurs en pied
+et en tête, débord et épaisseur de semelle) ; `trace.figure_section_materiaux`
+pour Matériaux — enrobages cotés ; `trace.figure_charges` pour Charges —
+une flèche par charge appliquée, coloriée selon la catégorie d'action
+G/Q/A, avec une cote visuelle des distances/étendue/profondeur/
+excentricité saisies pour la charge, plus un aperçu en pointillés de la
+charge en cours de saisie avant son ajout) qui se redessine
+automatiquement, avec un léger différé, à chaque modification d'un champ.
+Le formulaire de l'onglet Charges n'affiche que les champs utilisables
+pour le type de charge sélectionné (ex. « Distance au mur »/« Étendue »
+pour une charge surfacique de terre-plein, masqués pour un poids propre —
+voir `saisie.PARAMETRES_PAR_TYPE`). Dans l'onglet Charges, la liste des
+charges déjà ajoutées se double-clique (ou bouton « Modifier la charge
+sélectionnée ») pour recharger ses valeurs dans le formulaire et les
+corriger, plutôt que de devoir la supprimer puis la ressaisir. La police
+par défaut de la fenêtre est agrandie (~11pt) pour rester lisible une
+fois la fenêtre maximisée sur un grand écran.
+
+La poussée des terres et la pression hydrostatique ne se saisissent plus
+dans l'onglet Charges (ces deux types n'y figurent plus) : elles sont
+générées automatiquement depuis les seules valeurs de l'onglet Sol —
+la poussée toujours, l'hydrostatique dès qu'un niveau de nappe est saisi
+— par `calcul.charges_effectives()`, qui ignore aussi toute charge de ces
+deux types encore présente dans un fichier `.mct` enregistré avant ce
+changement (pas de double comptage). L'onglet Sol affiche en plus un
+second aperçu, `trace.figure_pression_sol` : le profil de ces deux
+pressions horizontales sur la hauteur du mur, avec leur valeur en kN/m²
+au pied (et en tête pour la poussée).
 
 Tkinter fait partie de la bibliothèque standard mais n'est pas toujours
 présent dans un environnement de développement minimal (ex. `python3-tk`

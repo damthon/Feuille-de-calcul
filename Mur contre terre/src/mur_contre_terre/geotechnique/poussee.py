@@ -80,14 +80,20 @@ def contrainte_verticale_effective(sol: Sol, hauteur: float, profondeur: float, 
 
     Tient compte du poids déjaugé sous la nappe (``Sol.gamma_sat`` réduit du
     poids volumique de l'eau) ; la pression d'eau elle-même est calculée
-    séparément (``hydrostatique.pression_hydrostatique``).
+    séparément (``hydrostatique.pression_hydrostatique``). ``Sol.niveau_nappe``
+    est la hauteur du plan d'eau depuis le pied du mur — convertie ici en
+    profondeur depuis la surface (``hauteur - niveau_nappe``), l'axe utilisé
+    par cette fonction.
     """
     if not 0.0 <= profondeur <= hauteur:
         raise ValueError(f"profondeur={profondeur} hors de la hauteur du mur [0, {hauteur}]")
-    if sol.niveau_nappe is None or profondeur <= sol.niveau_nappe:
+    if sol.niveau_nappe is None:
+        return g0 + sol.gamma * profondeur
+    profondeur_nappe = hauteur - sol.niveau_nappe
+    if profondeur <= profondeur_nappe:
         return g0 + sol.gamma * profondeur
     gamma_prime = sol.gamma_sat - GAMMA_EAU  # type: ignore[operator]
-    return g0 + sol.gamma * sol.niveau_nappe + gamma_prime * (profondeur - sol.niveau_nappe)
+    return g0 + sol.gamma * profondeur_nappe + gamma_prime * (profondeur - profondeur_nappe)
 
 
 def pression_verticale(e_ah: float, sol: Sol, delta: float) -> float:

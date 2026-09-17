@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from mur_contre_terre.donnees.charges import CasDeCharge, CategorieAction, TypeCharge
 from mur_contre_terre.donnees.materiaux import Materiaux
 from mur_contre_terre.donnees.projet import Projet
 from mur_contre_terre.mecanique.charges_nodales import vecteur_charge
@@ -132,6 +133,33 @@ def verifier_section(
     )
 
 
+# Ces deux actions sont entièrement déterminées par Projet.sol/Projet.geometrie (voir
+# mecanique.charges_nodales.vecteur_charge) : elles ne se saisissent plus manuellement dans l'onglet
+# Charges (voir interface.bureau, qui importe ce nom pour retirer ces types du menu déroulant et
+# filtrer les fichiers .mct existants) et sont ajoutées automatiquement par charges_effectives() ci-dessous.
+TYPES_CHARGE_AUTOMATIQUES = (TypeCharge.POUSSEE_TERRES, TypeCharge.PRESSION_HYDROSTATIQUE)
+
+
+def charges_effectives(projet: Projet) -> tuple[CasDeCharge, ...]:
+    """Charges réellement utilisées pour le calcul : les charges saisies manuellement (``projet.charges``),
+    complétées de la poussée des terres (toujours présente) et de la pression hydrostatique (si une nappe
+    est définie dans l'onglet Sol). Toute charge de l'un de ces deux types déjà présente dans
+    ``projet.charges`` (ex. fichier ``.mct`` enregistré avant ce changement) est ignorée, pour éviter de
+    compter deux fois la même action."""
+    manuelles = tuple(c for c in projet.charges if c.type not in TYPES_CHARGE_AUTOMATIQUES)
+    automatiques = [
+        CasDeCharge(nom="Poussée des terres", type=TypeCharge.POUSSEE_TERRES, categorie=CategorieAction.G, valeur=0.0)
+    ]
+    if projet.sol.niveau_nappe is not None:
+        automatiques.append(
+            CasDeCharge(
+                nom="Pression hydrostatique", type=TypeCharge.PRESSION_HYDROSTATIQUE, categorie=CategorieAction.G,
+                valeur=0.0,
+            )
+        )
+    return tuple(automatiques) + manuelles
+
+
 def calculer(projet: Projet) -> ResultatCalcul:
     """Calcul complet : maillage → charges → combinaisons SIA 260 → solveur linéaire → vérification de section.
 
@@ -142,11 +170,10 @@ def calculer(projet: Projet) -> ResultatCalcul:
     maillage = generer_maillage(projet.geometrie, projet.finesse_maillage)
     ea, ei = rigidites_par_element(projet.geometrie, projet.materiaux, maillage)
 
-    vecteurs = {
-        c.nom: vecteur_charge(c, projet.sol, projet.geometrie, projet.materiaux, maillage) for c in projet.charges
-    }
-    combinaisons_elu = generer_combinaisons_elu(projet.charges)
-    combinaisons_els = generer_combinaisons_els(projet.charges)
+    charges = charges_effectives(projet)
+    vecteurs = {c.nom: vecteur_charge(c, projet.sol, projet.geometrie, projet.materiaux, maillage) for c in charges}
+    combinaisons_elu = generer_combinaisons_elu(charges)
+    combinaisons_els = generer_combinaisons_els(charges)
 
     resultats_elu = tuple(
         resoudre(maillage, ea, ei, projet.appuis, projet.sol, projet.geometrie, vecteur_combine(c, vecteurs))
