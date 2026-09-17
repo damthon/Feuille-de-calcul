@@ -56,6 +56,34 @@ _UNITE_VALEUR_INVERSE = {
     TypeCharge.PRESSION_COMPACTAGE: en_kN_m2,
 }
 
+# Types pour lesquels le champ « Valeur » est utilisé (les autres sont calculés automatiquement — voir
+# _UNITE_VALEUR — et l'interface peut donc masquer ce champ sans perte d'information).
+TYPES_AVEC_VALEUR = frozenset(t for t, conversion in _UNITE_VALEUR.items() if conversion is not None)
+
+# Unité affichée à côté du champ « Valeur », propre à chaque type de charge.
+UNITE_AFFICHEE_VALEUR: dict[TypeCharge, str] = {
+    TypeCharge.CHARGE_TETE: "kN",
+    TypeCharge.SURCHARGE_TETE: "kN/m²",
+    TypeCharge.CHARGE_SURFACIQUE_TERREPLEIN: "kN/m²",
+    TypeCharge.CHARGE_LINEAIRE_TERREPLEIN: "kN/m",
+    TypeCharge.PRESSION_COMPACTAGE: "kN/m²",
+}
+
+# Paramètres (``CasDeCharge.parametres``) réellement exploités pour chaque type de charge — voir
+# ``mecanique.charges_nodales.vecteur_charge`` — pour que l'interface n'affiche que les champs utilisables
+# selon le type sélectionné plutôt que la totalité des paramètres possibles (n.b. ``SURCHARGE_TETE`` module la
+# poussée sur toute la hauteur du massif via ``g0`` : distance/étendue ne s'y appliquent pas).
+PARAMETRES_PAR_TYPE: dict[TypeCharge, tuple[str, ...]] = {
+    TypeCharge.POIDS_PROPRE: (),
+    TypeCharge.CHARGE_TETE: ("excentricite",),
+    TypeCharge.POUSSEE_TERRES: (),
+    TypeCharge.SURCHARGE_TETE: (),
+    TypeCharge.CHARGE_SURFACIQUE_TERREPLEIN: ("distance", "etendue"),
+    TypeCharge.CHARGE_LINEAIRE_TERREPLEIN: ("distance",),
+    TypeCharge.PRESSION_HYDROSTATIQUE: (),
+    TypeCharge.PRESSION_COMPACTAGE: ("profondeur_application",),
+}
+
 
 def _formater(valeur: float) -> str:
     """Représentation compacte d'un nombre pour un champ de saisie (pas de zéros superflus)."""

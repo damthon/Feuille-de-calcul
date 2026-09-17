@@ -49,12 +49,19 @@ _GEOMETRIE_PAR_DEFAUT = Geometrie(hauteur=3.0, ep_base=0.30, ep_couronnement=0.2
 
 _DELAI_REDESSIN_MS = 250
 
+# Police de base agrandie par rapport au défaut Tk (~9pt) — sans cela, les champs de saisie restent
+# minuscules à l'écran une fois la fenêtre maximisée sur un grand moniteur (retour utilisateur).
+_POLICE_BASE = ("Segoe UI", 11)
+_POLICE_GRAS = ("Segoe UI", 11, "bold")
+
 
 class Application(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(TITRE)
-        self.geometry("1280x760")
+        self.geometry("1440x900")
+        self.minsize(1180, 700)
+        self._appliquer_police()
 
         self.chemin_projet: str | None = None
         self.charges: list[CasDeCharge] = []
@@ -77,6 +84,19 @@ class Application(tk.Tk):
         self._maj_apercus_mur()
         self._maj_apercu_materiaux()
         self._maj_apercu_charges()
+
+    # ------------------------------------------------------------------ apparence
+
+    def _appliquer_police(self) -> None:
+        """Agrandit la police par défaut de tous les widgets (classiques Tk *et* ttk) — l'écran maximisé
+        reste lisible même sur un moniteur haute résolution, au lieu de garder la taille système ~9pt."""
+        self.option_add("*Font", _POLICE_BASE)
+        self.option_add("*TCombobox*Listbox.font", _POLICE_BASE)
+        style = ttk.Style(self)
+        style.configure(".", font=_POLICE_BASE)
+        style.configure("TNotebook.Tab", font=_POLICE_BASE, padding=(14, 8))
+        style.configure("Treeview", font=_POLICE_BASE, rowheight=26)
+        style.configure("Treeview.Heading", font=_POLICE_GRAS)
 
     # ------------------------------------------------------------------ menu
 
@@ -118,15 +138,16 @@ class Application(tk.Tk):
         cle: str,
         defaut: str = "",
         aide: str | None = None,
-    ) -> tk.Entry:
-        tk.Label(parent, text=etiquette).grid(row=ligne, column=0, sticky="w", padx=4, pady=3)
+    ) -> tuple[tk.Label, tk.Entry]:
+        label = tk.Label(parent, text=etiquette)
+        label.grid(row=ligne, column=0, sticky="w", padx=6, pady=5)
         var = tk.StringVar(value=defaut)
-        entree = tk.Entry(parent, textvariable=var, width=14)
-        entree.grid(row=ligne, column=1, sticky="w", padx=4, pady=3)
+        entree = tk.Entry(parent, textvariable=var, width=16)
+        entree.grid(row=ligne, column=1, sticky="w", padx=6, pady=5)
         variables[cle] = var
         if aide:
             infobulle.attacher(entree, aide)
-        return entree
+        return label, entree
 
     def _construire_apercu(self, parent: tk.Widget, largeur: float = 4.3, hauteur: float = 5.3) -> FigureCanvasTkAgg:
         """Panneau d'aperçu graphique (matplotlib intégré) à droite d'un formulaire d'onglet."""
@@ -166,11 +187,11 @@ class Application(tk.Tk):
         self._champ(formulaire, 3, "Inclinaison du terrain β [°]", self.vars_sol, "beta", "0", infobulle.TEXTES["beta"])
         self._champ(formulaire, 4, "Frottement mur-sol δ [°] (vide = auto)", self.vars_sol, "delta", "", infobulle.TEXTES["delta"])
 
-        tk.Label(formulaire, text="Type de poussée").grid(row=5, column=0, sticky="w", padx=4, pady=3)
+        tk.Label(formulaire, text="Type de poussée").grid(row=5, column=0, sticky="w", padx=6, pady=5)
         self.vars_sol["type_poussee"] = tk.StringVar(value="actif")
         ttk.Combobox(
             formulaire, textvariable=self.vars_sol["type_poussee"], values=("actif", "au_repos"), state="readonly", width=12
-        ).grid(row=5, column=1, sticky="w", padx=4, pady=3)
+        ).grid(row=5, column=1, sticky="w", padx=6, pady=5)
 
         self._champ(
             formulaire, 6, "Niveau de nappe [m, depuis le pied]", self.vars_sol, "niveau_nappe", "",
@@ -194,19 +215,19 @@ class Application(tk.Tk):
         formulaire = tk.Frame(cadre)
         formulaire.pack(side="left", fill="y", padx=(0, 4), pady=4)
 
-        tk.Label(formulaire, text="Pied").grid(row=0, column=0, sticky="w", padx=4, pady=3)
+        tk.Label(formulaire, text="Pied").grid(row=0, column=0, sticky="w", padx=6, pady=5)
         self.vars_appuis["pied"] = tk.StringVar(value="encastrement")
         ttk.Combobox(
             formulaire, textvariable=self.vars_appuis["pied"], values=("encastrement", "ressort"), state="readonly", width=14
-        ).grid(row=0, column=1, sticky="w", padx=4, pady=3)
+        ).grid(row=0, column=1, sticky="w", padx=6, pady=5)
 
         self._champ(formulaire, 1, "kθ [MN·m/rad] (vide = auto depuis ks)", self.vars_appuis, "k_theta", "", infobulle.TEXTES["k_theta"])
 
-        tk.Label(formulaire, text="Tête").grid(row=2, column=0, sticky="w", padx=4, pady=3)
+        tk.Label(formulaire, text="Tête").grid(row=2, column=0, sticky="w", padx=6, pady=5)
         self.vars_appuis["tete"] = tk.StringVar(value="libre")
         ttk.Combobox(
             formulaire, textvariable=self.vars_appuis["tete"], values=("libre", "appui_dalle"), state="readonly", width=14
-        ).grid(row=2, column=1, sticky="w", padx=4, pady=3)
+        ).grid(row=2, column=1, sticky="w", padx=6, pady=5)
 
         self.canvas_appuis = self._construire_apercu(cadre)
         for var in self.vars_appuis.values():
@@ -218,12 +239,12 @@ class Application(tk.Tk):
         formulaire = tk.Frame(cadre)
         formulaire.pack(side="left", fill="y", padx=(0, 4), pady=4)
 
-        tk.Label(formulaire, text="Classe de béton").grid(row=0, column=0, sticky="w", padx=4, pady=3)
+        tk.Label(formulaire, text="Classe de béton").grid(row=0, column=0, sticky="w", padx=6, pady=5)
         self.vars_materiaux["classe_beton"] = tk.StringVar(value="C30/37")
         ttk.Combobox(
             formulaire, textvariable=self.vars_materiaux["classe_beton"], values=_CLASSES_BETON, state="readonly", width=12
-        ).grid(row=0, column=1, sticky="w", padx=4, pady=3)
-        tk.Label(formulaire, text="Acier B500B (fixe)").grid(row=1, column=0, sticky="w", padx=4, pady=3)
+        ).grid(row=0, column=1, sticky="w", padx=6, pady=5)
+        tk.Label(formulaire, text="Acier B500B (fixe)").grid(row=1, column=0, sticky="w", padx=6, pady=5)
         self._champ(formulaire, 2, "Enrobage côté terre [mm]", self.vars_materiaux, "enrobage_terre", "50")
         self._champ(formulaire, 3, "Enrobage côté intérieur [mm]", self.vars_materiaux, "enrobage_interieur", "40")
 
@@ -254,24 +275,28 @@ class Application(tk.Tk):
         formulaire.grid(row=2, column=0, columnspan=2, sticky="we", padx=4)
 
         self._champ(formulaire, 0, "Nom", self.vars_charge, "nom", "")
-        tk.Label(formulaire, text="Type").grid(row=1, column=0, sticky="w", padx=4, pady=3)
+        tk.Label(formulaire, text="Type").grid(row=1, column=0, sticky="w", padx=6, pady=5)
         self.vars_charge["type"] = tk.StringVar(value=_TYPES_CHARGE[0])
         ttk.Combobox(
             formulaire, textvariable=self.vars_charge["type"], values=_TYPES_CHARGE, state="readonly", width=28
-        ).grid(row=1, column=1, sticky="w", padx=4, pady=3)
-        tk.Label(formulaire, text="Catégorie").grid(row=2, column=0, sticky="w", padx=4, pady=3)
+        ).grid(row=1, column=1, sticky="w", padx=6, pady=5)
+        tk.Label(formulaire, text="Catégorie").grid(row=2, column=0, sticky="w", padx=6, pady=5)
         self.vars_charge["categorie"] = tk.StringVar(value="G")
         ttk.Combobox(
             formulaire, textvariable=self.vars_charge["categorie"], values=_CATEGORIES, state="readonly", width=6
-        ).grid(row=2, column=1, sticky="w", padx=4, pady=3)
-        self._champ(formulaire, 3, "Valeur", self.vars_charge, "valeur", "0")
+        ).grid(row=2, column=1, sticky="w", padx=6, pady=5)
+        self.etiquette_valeur, self.entree_valeur = self._champ(formulaire, 3, "Valeur", self.vars_charge, "valeur", "0")
         self._champ(formulaire, 4, "ψ0", self.vars_charge, "psi0", "0", infobulle.TEXTES["psi0"])
         self._champ(formulaire, 5, "ψ1", self.vars_charge, "psi1", "0", infobulle.TEXTES["psi1"])
         self._champ(formulaire, 6, "ψ2", self.vars_charge, "psi2", "0", infobulle.TEXTES["psi2"])
-        self._champ(formulaire, 7, "Excentricité [m]", self.vars_charge, "excentricite", "")
-        self._champ(formulaire, 8, "Distance au mur [m]", self.vars_charge, "distance", "")
-        self._champ(formulaire, 9, "Étendue [m]", self.vars_charge, "etendue", "")
-        self._champ(formulaire, 10, "Profondeur d'application [m]", self.vars_charge, "profondeur_application", "")
+        self._lignes_parametres_charge: dict[str, tuple[tk.Label, tk.Entry]] = {
+            "excentricite": self._champ(formulaire, 7, "Excentricité [m]", self.vars_charge, "excentricite", ""),
+            "distance": self._champ(formulaire, 8, "Distance au mur [m]", self.vars_charge, "distance", ""),
+            "etendue": self._champ(formulaire, 9, "Étendue [m]", self.vars_charge, "etendue", ""),
+            "profondeur_application": self._champ(
+                formulaire, 10, "Profondeur d'application [m]", self.vars_charge, "profondeur_application", ""
+            ),
+        }
 
         boutons_formulaire = tk.Frame(formulaire)
         boutons_formulaire.grid(row=11, column=0, columnspan=2, pady=6)
@@ -285,6 +310,8 @@ class Application(tk.Tk):
         self.canvas_charges = self._construire_apercu(cadre)
         for var in self.vars_charge.values():
             var.trace_add("write", self._on_champ_change_charges)
+        self.vars_charge["type"].trace_add("write", self._maj_champs_charge)
+        self._maj_champs_charge()
         return cadre
 
     def _onglet_resultats(self, notebook: ttk.Notebook) -> tk.Widget:
@@ -394,6 +421,35 @@ class Application(tk.Tk):
 
     def _on_champ_change_charges(self, *_args: object) -> None:
         self._debounce("charges", self._maj_apercu_charges)
+
+    def _maj_champs_charge(self, *_args: object) -> None:
+        """Affiche uniquement les champs (Valeur, paramètres) pertinents pour le type de charge
+        sélectionné — ex. distance/étendue n'ont pas de sens pour un poids propre (voir
+        ``saisie.PARAMETRES_PAR_TYPE``). Appelé immédiatement (pas de _debounce) au changement de type."""
+        try:
+            type_charge = TypeCharge(self.vars_charge["type"].get())
+        except ValueError:
+            return
+
+        if type_charge in saisie.TYPES_AVEC_VALEUR:
+            unite = saisie.UNITE_AFFICHEE_VALEUR.get(type_charge, "")
+            self.etiquette_valeur.config(text=f"Valeur [{unite}]" if unite else "Valeur")
+            self.etiquette_valeur.grid()
+            self.entree_valeur.grid()
+        else:
+            self.etiquette_valeur.grid_remove()
+            self.entree_valeur.grid_remove()
+            self.vars_charge["valeur"].set("0")
+
+        parametres_utilises = saisie.PARAMETRES_PAR_TYPE.get(type_charge, ())
+        for cle, (etiquette, entree) in self._lignes_parametres_charge.items():
+            if cle in parametres_utilises:
+                etiquette.grid()
+                entree.grid()
+            else:
+                etiquette.grid_remove()
+                entree.grid_remove()
+                self.vars_charge[cle].set("")
 
     # ----------------------------------------------------------------- actions
 

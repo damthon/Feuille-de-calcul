@@ -45,6 +45,19 @@ def test_figure_geometrie_a_les_bons_axes():
     assert len(fig.axes) == 1
 
 
+def test_figure_geometrie_cote_les_5_dimensions_saisies():
+    """Les 5 champs de l'onglet Géométrie (H, ep_base, ep_couronnement, débord, ep_semelle) doivent
+    être repérables sur le schéma par une cote visuelle — voir _dessiner_cotes_geometrie."""
+    geometrie = _projet().geometrie
+    fig = figure_geometrie(geometrie)
+    textes = {t.get_text() for t in fig.axes[0].texts}
+    assert any("3.00" in t for t in textes)  # hauteur H
+    assert any(f"{geometrie.ep_base:.2f}" in t for t in textes)
+    assert any(f"{geometrie.ep_couronnement:.2f}" in t for t in textes)
+    assert any(f"{geometrie.debord_semelle:.2f}" in t for t in textes)
+    assert any(f"{geometrie.ep_semelle:.2f}" in t for t in textes)
+
+
 def test_figure_geometrie_avec_sol_et_appuis_ne_leve_pas_d_erreur():
     projet = _projet()
     sol_avec_nappe = Sol(
@@ -97,6 +110,50 @@ def test_figure_charges_avec_tous_les_types_et_previsualisation():
     )
     fig = figure_charges(projet.geometrie, sol, charges, previsualisation)
     assert len(fig.axes) == 1
+
+
+def test_figure_charges_cote_les_distances_saisies():
+    """Les distances/étendue/profondeur/excentricité saisies pour une charge doivent apparaître comme
+    cote visuelle sur le schéma (et non uniquement dans l'étiquette de la charge)."""
+    projet = _projet()
+    charges = [
+        CasDeCharge(
+            nom="Charge tête", type=TypeCharge.CHARGE_TETE, categorie=CategorieAction.Q, valeur=kN(30),
+            parametres={"excentricite": 0.08},
+        ),
+        CasDeCharge(
+            nom="Terreplein", type=TypeCharge.CHARGE_SURFACIQUE_TERREPLEIN, categorie=CategorieAction.Q,
+            valeur=kN_m2(5), parametres={"distance": 0.5, "etendue": 2.0},
+        ),
+        CasDeCharge(
+            nom="Linéaire", type=TypeCharge.CHARGE_LINEAIRE_TERREPLEIN, categorie=CategorieAction.Q,
+            valeur=kN(12), parametres={"distance": 0.6},
+        ),
+        CasDeCharge(
+            nom="Compactage", type=TypeCharge.PRESSION_COMPACTAGE, categorie=CategorieAction.Q,
+            valeur=kN_m2(5), parametres={"profondeur_application": 0.8},
+        ),
+    ]
+    fig = figure_charges(projet.geometrie, projet.sol, charges)
+    textes = " ".join(t.get_text() for t in fig.axes[0].texts)
+    assert "e=0.08 m" in textes
+    assert "étendue=2.00 m" in textes
+    assert "d=0.50 m" in textes
+    assert "d=0.60 m" in textes
+    assert "prof.=0.80 m" in textes
+
+
+def test_figure_charges_surcharge_tete_n_affiche_pas_de_cote_distance_etendue():
+    """SURCHARGE_TETE n'a pas de paramètre distance/étendue réel (voir PARAMETRES_PAR_TYPE) : la
+    représentation ne doit donc pas coter des valeurs par défaut trompeuses (0 m / 1 m)."""
+    projet = _projet()
+    charge = CasDeCharge(
+        nom="Surcharge", type=TypeCharge.SURCHARGE_TETE, categorie=CategorieAction.Q, valeur=kN_m2(10)
+    )
+    fig = figure_charges(projet.geometrie, projet.sol, [charge])
+    textes = " ".join(t.get_text() for t in fig.axes[0].texts)
+    assert "étendue=" not in textes
+    assert "d=" not in textes
 
 
 def test_figure_charges_hydrostatique_sans_nappe_definie_ne_leve_pas_d_erreur():
