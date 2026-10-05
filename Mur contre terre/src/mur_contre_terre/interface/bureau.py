@@ -158,6 +158,7 @@ class Application(tk.Tk):
         canvas = FigureCanvasTkAgg(Figure(figsize=(largeur, hauteur)), master=cadre)
         canvas.get_tk_widget().pack(fill="both", expand=True)
         canvas.draw()
+        canvas._cadre_apercu = cadre  # utilisé par _dessiner() pour reconstruire le widget à chaque redessin
         return canvas
 
     def _onglet_geometrie(self, notebook: ttk.Notebook) -> tk.Widget:
@@ -366,18 +367,32 @@ class Application(tk.Tk):
         except ValueError:
             return None
 
-    def _dessiner(self, canvas: FigureCanvasTkAgg, construire_figure: Callable[[], Figure]) -> None:
-        """Remplace la figure d'un aperçu par une nouvelle, en libérant l'ancienne. Silencieux si la
-        saisie en cours ne permet pas encore de construire un projet valide (champ vide, non numérique…)."""
+    def _dessiner(self, canvas: FigureCanvasTkAgg, construire_figure: Callable[[], Figure]) -> FigureCanvasTkAgg:
+        """Reconstruit entièrement le panneau d'aperçu (nouveau widget Tk, nouvelle ``Figure``) et retourne
+        le nouveau canvas — à réaffecter par l'appelant (``self.canvas_x = self._dessiner(self.canvas_x, ...)``).
+
+        Un simple ``canvas.figure = nouvelle_figure`` ne suffit pas : ``FigureCanvasTkAgg`` ne redimensionne
+        pas son image Tk existante pour une ``Figure`` de taille différente (aspect ratio dépendant des
+        données tracées), ce qui laissait l'ancien rendu visible sous le nouveau — l'aperçu semblait
+        dupliqué à chaque modification d'un champ. Reconstruire le widget est le contournement recommandé
+        par la doc matplotlib pour changer la figure d'un ``FigureCanvasTkAgg`` après coup.
+
+        Silencieux (widget inchangé) si la saisie en cours ne permet pas encore de construire un projet
+        valide (champ vide, non numérique…).
+        """
         try:
             nouvelle_figure = construire_figure()
         except Exception:
-            return
+            return canvas
+        cadre = canvas._cadre_apercu
         ancienne_figure = canvas.figure
-        canvas.figure = nouvelle_figure
-        canvas.draw_idle()
-        if ancienne_figure is not nouvelle_figure:
-            plt.close(ancienne_figure)
+        canvas.get_tk_widget().destroy()
+        nouveau_canvas = FigureCanvasTkAgg(nouvelle_figure, master=cadre)
+        nouveau_canvas.get_tk_widget().pack(fill="both", expand=True)
+        nouveau_canvas.draw()
+        nouveau_canvas._cadre_apercu = cadre
+        plt.close(ancienne_figure)
+        return nouveau_canvas
 
     def _maj_apercus_mur(self) -> None:
         """Aperçu commun aux onglets Géométrie/Sol/Appuis : coupe du mur, massif de terre/nappe, appuis ;
@@ -387,17 +402,28 @@ class Application(tk.Tk):
             return
         sol = self._construire_sol_ou_none()
         appuis = self._construire_appuis_ou_none()
-        for canvas in (self.canvas_geometrie, self.canvas_sol, self.canvas_appuis):
-            self._dessiner(canvas, lambda g=geometrie, s=sol, a=appuis: trace.figure_geometrie(g, s, a))
+        self.canvas_geometrie = self._dessiner(
+            self.canvas_geometrie, lambda g=geometrie, s=sol, a=appuis: trace.figure_geometrie(g, s, a)
+        )
+        self.canvas_sol = self._dessiner(
+            self.canvas_sol, lambda g=geometrie, s=sol, a=appuis: trace.figure_geometrie(g, s, a)
+        )
+        self.canvas_appuis = self._dessiner(
+            self.canvas_appuis, lambda g=geometrie, s=sol, a=appuis: trace.figure_geometrie(g, s, a)
+        )
         if sol is not None:
-            self._dessiner(self.canvas_pression, lambda g=geometrie, s=sol: trace.figure_pression_sol(s, g))
+            self.canvas_pression = self._dessiner(
+                self.canvas_pression, lambda g=geometrie, s=sol: trace.figure_pression_sol(s, g)
+            )
 
     def _maj_apercu_materiaux(self) -> None:
         geometrie = self._construire_geometrie_ou_none()
         materiaux = self._construire_materiaux_ou_none()
         if geometrie is None or materiaux is None:
             return
-        self._dessiner(self.canvas_materiaux, lambda g=geometrie, m=materiaux: trace.figure_section_materiaux(g, m))
+        self.canvas_materiaux = self._dessiner(
+            self.canvas_materiaux, lambda g=geometrie, m=materiaux: trace.figure_section_materiaux(g, m)
+        )
 
     def _maj_apercu_charges(self) -> None:
         geometrie = self._construire_geometrie_ou_none() or _GEOMETRIE_PAR_DEFAUT
@@ -407,7 +433,7 @@ class Application(tk.Tk):
         except ValueError:
             previsualisation = None
         charges = list(self.charges)
-        self._dessiner(
+        self.canvas_charges = self._dessiner(
             self.canvas_charges,
             lambda g=geometrie, s=sol, ch=charges, p=previsualisation: trace.figure_charges(g, s, ch, p),
         )
